@@ -1,0 +1,104 @@
+<header class="position-absolute top-0 w-100">
+  <nav class="navbar navbar-expand-lg navbar-dark bef bef-bg-mystic">
+    <div class="container-fluid">
+      <a
+        class="navbar-brand bef bef-text-lavender bef bef-w-50per bef-w-sm-75per bef-w-md-90per text-wrap"
+        href="#"
+        >{{ title }}</a
+      >
+      <button
+        class="btn bef bef-btnOutline-lavender bef-textHover-mystic"
+        type="button"
+        data-bs-toggle="offcanvas"
+        data-bs-target="#offcanvasAside"
+        aria-controls="offcanvasAside"
+      >
+        Menú
+      </button>
+    </div>
+  </nav>
+</header>
+<aside
+  class="offcanvas offcanvas-start"
+  tabindex="-1"
+  id="offcanvasAside"
+  aria-labelledby="offcanvasAsideLabel"
+>
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasAsideLabel">Menú</h5>
+    <button
+      type="button"
+      class="btn-close"
+      data-bs-dismiss="offcanvas"
+      aria-label="Close"
+    ></button>
+  </div>
+  <div
+    class="offcanvas-body d-flex flex-column justify-content-between align-items-center"
+  >
+    <ul class="list-group list-group-flush w-100">
+      <li class="list-group-item">
+        <a
+          href="/home"
+          [routerLink]="['/home']"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+          >Inicio</a
+        >
+      </li>
+      <li class="list-group-item">
+        <a
+          href="/user"
+          [routerLink]="['/user']"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+        >
+          <ng-container *ngIf="identity; else elseUserTemplate">
+            Perfil
+          </ng-container>
+          <ng-template #elseUserTemplate> Registrarse </ng-template>
+        </a>
+      </li>
+      <li
+        class="list-group-item"
+        *ngIf="identity && identity.role && identity.role === 'ADMINSACA'"
+        data-bs-dismiss="offcanvas"
+        aria-label="Close"
+      >
+        <a
+          href="/users"
+          [routerLink]="['/login']"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+          >Usuarios</a
+        >
+      </li>
+      <li class="list-group-item">
+        <a
+          href="/login"
+          [routerLink]="['/login']"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+        >
+          <ng-container *ngIf="identity; else elseLogInTemplate">
+            Cambiar de cuenta
+          </ng-container>
+          <ng-template #elseLogInTemplate> Iniciar Sesión </ng-template>
+        </a>
+      </li>
+    </ul>
+    <button
+      class="btn bef bef-btn-mystic bef-text-lavender mb-3"
+      *ngIf="identity"
+      (click)="logOut()"
+    >
+      Logout
+    </button>
+  </div>
+</aside>
+<body class="bef bef-pt-56px bef bef-bg-lavender__OPA__0_125 bef-hmn-100vh">
+  <router-outlet></router-outlet>
+</body>
+<footer class="d-flex position-absolute bottom-0 w-100 bef bef-bg-mystic p-3">
+  <p class="bef bef-text-lavender text-center">Hola, soy el footer. 🐱‍👤🐱‍💻🐱‍🐉🐱‍🏍🐱‍👓🐱‍🚀</p>
+</footer>

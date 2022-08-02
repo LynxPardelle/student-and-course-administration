@@ -1,0 +1,68 @@
+<form
+  [formGroup]="loginForm"
+  class="d-block w-50 bef bef-my-100px mx-auto"
+  (ngSubmit)="submit()"
+>
+  <div class="my-3">
+    <label class="h4">Email</label>
+    <input class="form-control bg-transparent" type="email" formControlName="email" required />
+    <p
+      class="bef bef-text-blood fw-bold"
+      *ngIf="this.loginForm.get('email')?.errors?.['required']"
+      [exist]="this.loginForm.get('email')?.errors?.['required']"
+      (ngInit)="cssCreate()"
+    >
+      (El email no puede quedar vacío)
+    </p>
+    <p
+      class="bef bef-text-blood fw-bold"
+      *ngIf="this.loginForm.get('email')?.errors?.['minlength']"
+      [exist]="this.loginForm.get('email')?.errors?.['minlength']"
+      (ngInit)="cssCreate()"
+    >
+      (Debe tener como mínimo 7 caracteres)
+    </p>
+  </div>
+  <div class="my-3">
+    <label class="h4">Password</label>
+    <input
+      class="form-control bg-transparent"
+      type="password"
+      formControlName="password"
+      required
+    />
+    <p
+      class="bef bef-text-blood fw-bold"
+      *ngIf="this.loginForm.get('password')?.errors?.['required']"
+      [exist]="this.loginForm.get('password')?.errors?.['required']"
+      (ngInit)="cssCreate()"
+    >
+      (La contraseña no puede quedar vacía)
+    </p>
+    <p
+      class="bef bef-text-blood fw-bold"
+      *ngIf="this.loginForm.get('password')?.errors?.['maxlength']"
+      [exist]="this.loginForm.get('password')?.errors?.['maxlength']"
+      (ngInit)="cssCreate()"
+    >
+      (Debe tener como máximo 64 caracteres)
+    </p>
+    <p
+      class="bef bef-text-blood fw-bold"
+      *ngIf="this.loginForm.get('password')?.errors?.['minlength']"
+      [exist]="this.loginForm.get('password')?.errors?.['minlength']"
+      (ngInit)="cssCreate()"
+    >
+      (Debe tener como mínimo 4 caracteres)
+    </p>
+  </div>
+  <button
+    type="submit"
+    class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
+  >
+    Enviar
+  </button>
+  <p *ngIf="message" class="my-3">
+    {{ message }}
+  </p>
+</form>
