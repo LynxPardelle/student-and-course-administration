@@ -1,9 +1,10 @@
-<header class="position-absolute top-0 w-100">
+<header class="position-fixed top-0 w-100">
   <nav class="navbar navbar-expand-lg navbar-dark bef bef-bg-mystic">
     <div class="container-fluid">
       <a
         class="navbar-brand bef bef-text-lavender bef bef-w-50per bef-w-sm-75per bef-w-md-90per text-wrap"
         href="#"
+        appTitles20
         >{{ title }}</a
       >
       <button
@@ -25,7 +26,7 @@
   aria-labelledby="offcanvasAsideLabel"
 >
   <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="offcanvasAsideLabel">Menú</h5>
+    <h5 class="offcanvas-title" id="offcanvasAsideLabel" appTitles20>Menú</h5>
     <button
       type="button"
       class="btn-close"
@@ -46,28 +47,25 @@
           >Inicio</a
         >
       </li>
-      <li class="list-group-item">
+      <li class="list-group-item" *ngIf="identity">
         <a
           href="/user"
           [routerLink]="['/user']"
           data-bs-dismiss="offcanvas"
           aria-label="Close"
         >
-          <ng-container *ngIf="identity; else elseUserTemplate">
-            Perfil
-          </ng-container>
-          <ng-template #elseUserTemplate> Registrarse </ng-template>
+          Perfil
         </a>
       </li>
       <li
         class="list-group-item"
-        *ngIf="identity && identity.role && identity.role === 'ADMINSACA'"
+        *ngIf="identity && identity.role && identity.role === 'admin'"
         data-bs-dismiss="offcanvas"
         aria-label="Close"
       >
         <a
           href="/users"
-          [routerLink]="['/login']"
+          [routerLink]="['/users']"
           data-bs-dismiss="offcanvas"
           aria-label="Close"
           >Usuarios</a
@@ -86,6 +84,16 @@
           <ng-template #elseLogInTemplate> Iniciar Sesión </ng-template>
         </a>
       </li>
+      <li class="list-group-item">
+        <a
+          href="/register"
+          [routerLink]="['/register']"
+          data-bs-dismiss="offcanvas"
+          aria-label="Close"
+        >
+          Registro
+        </a>
+      </li>
     </ul>
     <button
       class="btn bef bef-btn-mystic bef-text-lavender mb-3"
@@ -96,9 +104,11 @@
     </button>
   </div>
 </aside>
-<body class="bef bef-pt-56px bef bef-bg-lavender__OPA__0_125 bef-hmn-100vh">
+<body class="bef bef-py-56px bef bef-bg-lavender__OPA__0_125 bef-hmn-100vh">
   <router-outlet></router-outlet>
 </body>
-<footer class="d-flex position-absolute bottom-0 w-100 bef bef-bg-mystic p-3">
-  <p class="bef bef-text-lavender text-center">Hola, soy el footer. 🐱‍👤🐱‍💻🐱‍🐉🐱‍🏍🐱‍👓🐱‍🚀</p>
+<footer class="d-flex position-fixed bottom-0 w-100 bef bef-bg-mystic p-3">
+  <p class="bef bef-text-lavender text-center">
+    Hola, soy el footer. 🐱‍👤🐱‍💻🐱‍🐉🐱‍🏍🐱‍👓🐱‍🚀
+  </p>
 </footer>

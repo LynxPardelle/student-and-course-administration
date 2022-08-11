@@ -1,5 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterModule, ActivatedRoute, Params } from '@angular/router';
+
+/* Bef */
+import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -8,7 +11,11 @@ import { Router, RouterModule, ActivatedRoute, Params } from '@angular/router';
 export class HomeComponent implements OnInit {
   public identity: any = null;
 
-  constructor(private _route: ActivatedRoute, private _router: Router) {}
+  constructor(
+    private _route: ActivatedRoute,
+    private _router: Router,
+    private _befService: BefService
+  ) {}
 
   ngOnInit(): void {
     this.getIdentity();
@@ -24,5 +31,9 @@ export class HomeComponent implements OnInit {
       this.identity = identity;
       console.log(this.identity);
     }
+  }
+
+  cssCreate(): void {
+    this._befService.cssCreate();
   }
 }

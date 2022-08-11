@@ -36,7 +36,6 @@ export class AppComponent implements OnInit {
     if (identity !== null) {
       identity = JSON.parse(identity);
       this.identity = identity;
-      this._router.navigate(['/login']);
     }
   }
 }
