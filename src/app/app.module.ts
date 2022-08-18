@@ -29,6 +29,10 @@ import { LoginComponent } from './components/user/login/login.component';
 import { UserComponent } from './components/user/user/user.component';
 import { UsersComponent } from './components/user/users/users.component';
 
+/* Course */
+import { CoursesComponent } from './components/course/courses/courses.component';
+import { CourseComponent } from './components/course/course/course.component';
+
 /* Directives */
 import { NgInitDirective } from './directives/ng-init.directive';
 import { Titles20Directive } from './directives/titles20.directive';
@@ -48,6 +52,10 @@ import { NameParserPipe } from './pipes/name-parser.pipe';
     LoginComponent,
     UserComponent,
     UsersComponent,
+
+    /* Course */
+    CoursesComponent,
+    CourseComponent,
 
     /* Directives */
     NgInitDirective,

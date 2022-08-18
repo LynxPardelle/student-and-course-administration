@@ -9,6 +9,11 @@ import { LoginComponent } from './components/user/login/login.component';
 import { UserComponent } from './components/user/user/user.component';
 import { UsersComponent } from './components/user/users/users.component';
 
+
+/* Course */
+import { CoursesComponent } from './components/course/courses/courses.component';
+import { CourseComponent } from './components/course/course/course.component';
+
 const routes: Routes = [
   { path: '', component: HomeComponent },
 
@@ -20,6 +25,10 @@ const routes: Routes = [
   { path: 'register', component: LoginComponent },
   { path: 'user', component: UserComponent },
   { path: 'users', component: UsersComponent },
+
+  // Course
+  { path: 'course', component: CourseComponent },
+  { path: 'courses', component: CoursesComponent },
 ];
 
 @NgModule({

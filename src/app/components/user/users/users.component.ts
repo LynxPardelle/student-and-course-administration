@@ -1,10 +1,11 @@
 import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTable, MatTableDataSource } from '@angular/material/table';
+import { Router, ActivatedRoute } from '@angular/router';
+import { lastValueFrom } from 'rxjs';
+
 import { UserService } from 'src/app/services/user.service';
 import { User } from 'src/app/models/user';
-import { lastValueFrom } from 'rxjs';
-import { Router, ActivatedRoute } from '@angular/router';
 
 import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 
@@ -69,7 +70,7 @@ export class UsersComponent implements OnInit {
           (ELEMENT_DATA[0] &&
             !this._userService.checkIfUserInterface(ELEMENT_DATA[0]))
         ) {
-          throw new Error('There is not users.');
+          throw new Error('There are not users.');
         }
         this.ELEMENT_DATA = ELEMENT_DATA;
         this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
