@@ -1,0 +1,306 @@
+<ng-container
+  *ngIf="course.id >= 0 && isEdit === false; else elseCourseExistTemplate"
+>
+  <h2 class="text-center my-3" appTitles20>{{ course.title }}</h2>
+  <ng-container
+    *ngIf="course.profesor && course.profesor.name; else elseProfesorTemplate"
+  >
+    <h3 class="text-center">
+      {{ "Profesor " + (course.profesor | nameParser) }}
+    </h3>
+  </ng-container>
+  <ng-template #elseProfesorTemplate>
+    <form
+      [formGroup]="editCourseForm"
+      class="d-block w-50 bef bef-pt-1rem mx-auto"
+      (ngSubmit)="submit()"
+    >
+      <!-- Profesor -->
+      <div
+        class="my-3 mx-auto bef bef-w-250px"
+        [exist]="!course.profesor || !course.profesor.name"
+        (ngInit)="cssCreate()"
+      >
+        <label class="h4">Añadir Profesor</label>
+        <select
+          class="form-select"
+          formControlName="profesor"
+          aria-label="Profesor select"
+        >
+          <ng-container *ngFor="let user of users">
+            <option
+              *ngIf="user.role === 'profesor'"
+              [ngValue]="user"
+              value="{{ user }}"
+            >
+              {{ user.name }}
+            </option>
+          </ng-container>
+        </select>
+      </div>
+
+      <!-- Send -->
+      <button
+        type="submit"
+        class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
+        [disabled]="!editCourseForm.get('profesor')?.getRawValue()"
+      >
+        Añadir profesor
+      </button>
+    </form>
+  </ng-template>
+  <ng-container
+    *ngIf="
+      identity &&
+      identity.role &&
+      (identity.role === 'admin' || identity.role === 'profesor')
+    "
+  >
+    <ng-container *ngIf="ELEMENT_DATA && ELEMENT_DATA.length > 0">
+      <div
+        class="bef bef-bg-mystic bef-p-1rem w-100 d-flex justify-content-between"
+      >
+        <h3 class="text-light my-0">Estudiantes</h3>
+        <mat-form-field>
+          <mat-label class="text-light">Buscar</mat-label>
+          <input
+            type="text"
+            class="form-control bg-light"
+            (keyup)="filter($event)"
+            matInput
+          />
+        </mat-form-field>
+      </div>
+      <table mat-table [dataSource]="dataSource" class="w-100">
+        <!-- Name Column -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef class="text-center">Nombre</th>
+          <td mat-cell *matCellDef="let element" class="text-center">
+            {{ element | nameParser }}
+          </td>
+        </ng-container>
+
+        <!-- Actions Column -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="text-center">
+            Acciones
+          </th>
+          <td mat-cell *matCellDef="let element" class="text-center">
+            <a
+              href="/user/id/{{ element.id }}"
+              [routerLink]="['/user/id/' + element.id]"
+              mat-icon-button
+            >
+              <mat-icon>preview</mat-icon>
+            </a>
+            <ng-container>
+              <ng-container
+                *ngIf="!hasItStudent(element); else elseInscriptionTemplate"
+              >
+                <button mat-icon-button (click)="addStudent(element)">
+                  <mat-icon>person_add</mat-icon>
+                </button>
+              </ng-container>
+              <ng-template #elseInscriptionTemplate>
+                <button mat-icon-button (click)="removeStudent(element)">
+                  <mat-icon>person_remove</mat-icon>
+                </button>
+              </ng-template>
+            </ng-container>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+      <div
+        class="bef bef-bg-mystic bef-p-1rem bef-h-2rem w-100 d-flex justify-content-between"
+      ></div>
+    </ng-container>
+    <form
+      [formGroup]="editCourseForm"
+      class="d-block w-50 bef bef-pb-1rem bef-pt-1rem mx-auto"
+      (ngSubmit)="submit()"
+    >
+      <!-- Add Student -->
+      <div class="my-3">
+        <label class="h4">Add Student</label>
+        <select
+          class="form-select"
+          formControlName="user2Add"
+          aria-label="Student to add select"
+        >
+          <option [ngValue]="null" value="null">Selecciona el usuario</option>
+          <ng-container *ngFor="let user of users">
+            <option
+              *ngIf="!hasItStudent(user)"
+              [ngValue]="user"
+              value="{{ user }}"
+            >
+              {{ user.name }}
+            </option>
+          </ng-container>
+        </select>
+        <button
+          class="btn bef bef-btn-mystic text-light d-block mx-auto mt-2"
+          [disabled]="editCourseForm.get('user2Add')?.getRawValue() === null"
+          (click)="addStudent()"
+        >
+          Add Student
+        </button>
+      </div>
+    </form>
+    <!--
+
+    -->
+    <button
+      (click)="addStudent(identity)"
+      *ngIf="
+        identity && (identity.id || identity.id >= 0) && !hasItStudent(identity)
+      "
+      class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
+    >
+      Inscribirse
+    </button>
+    <button
+      class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
+      (click)="changeEditOption()"
+    >
+      Editar
+    </button>
+  </ng-container>
+</ng-container>
+<ng-template #elseCourseExistTemplate>
+  <h2 class="text-center my-3" appTitles20>
+    {{ course.id < 0 ? "Creación" : "Edición" }}
+    de curso
+  </h2>
+  <form
+    [formGroup]="editCourseForm"
+    class="d-block w-50 bef bef-pb-4rem bef-pt-1rem mx-auto"
+    (ngSubmit)="submit()"
+  >
+    <!-- Title -->
+    <div class="my-3">
+      <label class="h4">Title</label>
+      <input
+        class="form-control bg-transparent"
+        type="text"
+        formControlName="title"
+        required
+      />
+      <p
+        class="bef bef-text-blood fw-bold"
+        *ngIf="editCourseForm.get('title')?.touched && editCourseForm.get('title')?.errors?.['required']"
+        [exist]="editCourseForm.get('title')?.errors?.['required']"
+        (ngInit)="cssCreate()"
+      >
+        (El título no puede quedar vacío)
+      </p>
+    </div>
+    <!-- Students List -->
+    <div>
+      <h4>Students</h4>
+      <ul class="list-group list-group-flush">
+        <li
+          class="list-group-item bg-transparent"
+          *ngFor="let student of editCourseForm.get('students')?.getRawValue()"
+        >
+          {{ student.name }}
+        </li>
+      </ul>
+    </div>
+    <!-- Add Student -->
+    <div class="my-3">
+      <label class="h4">Add Student</label>
+      <select
+        class="form-select"
+        formControlName="user2Add"
+        aria-label="Student to add select"
+      >
+        <ng-container *ngFor="let user of users">
+          <option
+            *ngIf="!hasItStudent(user)"
+            [ngValue]="user"
+            value="{{ user }}"
+          >
+            {{ user.name }}
+          </option>
+        </ng-container>
+      </select>
+      <button
+        class="btn bef bef-btn-mystic text-light d-block mx-auto mt-2"
+        (click)="addStudent()"
+        [disabled]="editCourseForm.get('user2Add')?.getRawValue() === null"
+      >
+        Add Student
+      </button>
+    </div>
+    <!-- Remove Student -->
+    <div
+      class="my-3"
+      *ngIf="
+        editCourseForm.get('students')?.getRawValue() &&
+        editCourseForm.get('students')?.getRawValue()[0]
+      "
+    >
+      <label class="h4">Remove Student</label>
+      <select
+        class="form-select"
+        formControlName="user2Remove"
+        aria-label="Student to remove select"
+      >
+        <ng-container
+          *ngFor="let user of editCourseForm.get('students')?.getRawValue()"
+        >
+          <option
+            *ngIf="hasItStudent(user)"
+            [ngValue]="user"
+            value="{{ user }}"
+          >
+            {{ user.name }}
+          </option>
+        </ng-container>
+      </select>
+      <button
+        class="btn bef bef-btn-mystic text-light d-block mx-auto mt-2"
+        (click)="removeStudent()"
+        [disabled]="editCourseForm.get('user2Remove')?.getRawValue() === null"
+      >
+        Remove Student
+      </button>
+    </div>
+    <!-- Profesor -->
+    <div class="my-3">
+      <label class="h4">Profesor</label>
+      <select
+        class="form-select"
+        formControlName="profesor"
+        aria-label="Profesor select"
+      >
+        <ng-container *ngFor="let user of users">
+          <option
+            *ngIf="user.role === 'profesor'"
+            [ngValue]="user"
+            value="{{ user }}"
+          >
+            {{ user.name }}
+          </option>
+        </ng-container>
+      </select>
+    </div>
+    <!-- Send -->
+    <button
+      type="submit"
+      class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
+    >
+      Enviar
+    </button>
+    <button
+      class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
+      (click)="changeEditOption()"
+    >
+      Cancelar edición
+    </button>
+  </form>
+</ng-template>
