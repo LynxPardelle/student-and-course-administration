@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterModule, ActivatedRoute, Params } from '@angular/router';
 
+import { UserService } from 'src/app/user/services/user.service';
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
 @Component({
@@ -11,15 +12,20 @@ import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap
 export class AppComponent implements OnInit {
   public identity: any = null;
 
-  title = 'Student and Course Administration';
+  public title = 'Student and Course Administration';
   constructor(
     private _route: ActivatedRoute,
     private _router: Router,
-    private _befService: BefService
+    private _befService: BefService,
+    private _userService: UserService
   ) {}
 
   ngOnInit(): void {
-    this.getIdentity();
+    // this.identity = this._userService.getIdentity();
+    this._userService.getIdentity(true).subscribe({
+      next: (user: any) => (this.identity = user),
+      error: (err: any) => console.error(err),
+    });
     this._befService.cssCreate();
   }
 
@@ -28,14 +34,6 @@ export class AppComponent implements OnInit {
   }
 
   logOut(): void {
-    localStorage.removeItem('identitySACA');
-  }
-
-  getIdentity() {
-    let identity = localStorage.getItem('identitySACA');
-    if (identity !== null) {
-      identity = JSON.parse(identity);
-      this.identity = identity;
-    }
+    this._userService.logOut();
   }
 }

@@ -1,8 +1,14 @@
-import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  ViewChild,
+  TemplateRef,
+  OnDestroy,
+} from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTable, MatTableDataSource } from '@angular/material/table';
 import { Router, ActivatedRoute } from '@angular/router';
-import { lastValueFrom } from 'rxjs';
+import { Subscription, lastValueFrom } from 'rxjs';
 
 import { UserService } from 'src/app/user/services/user.service';
 import { User } from 'src/app/user/models/user';
@@ -16,7 +22,7 @@ import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, OnDestroy {
   modalRef?: BsModalRef;
   public identity: any = null;
   public columns: string[] = ['name', 'role', 'actions'];
@@ -26,6 +32,7 @@ export class UsersComponent implements OnInit {
   );
   public editUserForm: FormGroup;
   public roleOptions: string[] = ['user', 'profesor', 'admin'];
+  public usersSubscription!: Subscription;
   @ViewChild(MatTable) tabla!: MatTable<User>;
   constructor(
     private fb: FormBuilder,
@@ -36,7 +43,7 @@ export class UsersComponent implements OnInit {
     private modalService: BsModalService
   ) {
     this.editUserForm = this.fb.group({
-      id: ['',[Validators.required]],
+      id: ['', [Validators.required]],
       name: ['', [Validators.required]],
       surname: ['', [Validators.required]],
       email: [
@@ -53,31 +60,34 @@ export class UsersComponent implements OnInit {
       ],
       role: [this.roleOptions[0]],
     });
+    this.usersSubscription = this._userService
+      .getUsers()
+      .pipe()
+      .subscribe({
+        next: (users) => {
+          this.ELEMENT_DATA = users;
+          this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
+        },
+        error: (err) => console.error(err),
+      });
+    this._userService.updateUsersList();
   }
 
   ngOnInit(): void {
-    this.getUsers();
-    this.getIdentity();
+    this._userService.getIdentity(true).subscribe({
+      next: (identity: any) => {
+        this.identity = identity;
+      },
+      error: (err: any) => {
+        this._router.navigate(['/auth/login']);
+        console.error(err);
+      },
+    });
     this._befService.cssCreate();
   }
 
-  getUsers() {
-    (async () => {
-      try {
-        let ELEMENT_DATA = await lastValueFrom(this._userService.getUsers());
-        if (
-          !ELEMENT_DATA ||
-          (ELEMENT_DATA[0] &&
-            !this._userService.checkIfUserInterface(ELEMENT_DATA[0]))
-        ) {
-          throw new Error('There are not users.');
-        }
-        this.ELEMENT_DATA = ELEMENT_DATA;
-        this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
-      } catch (error) {
-        console.error(error);
-      }
-    })();
+  ngOnDestroy(): void {
+    this.usersSubscription.unsubscribe();
   }
 
   async edit() {
@@ -101,40 +111,24 @@ export class UsersComponent implements OnInit {
       }
       this.modalRef?.hide();
       this.clearForm();
-      this.getUsers();
+      this._userService.updateUsersList();
     } catch (error) {
       console.error(error);
     }
   }
 
   async delete(element: User) {
-    try {
-      let deletedMessage = await lastValueFrom(
-        this._userService.deleteUser(element.id)
-      );
-      if (!deletedMessage) {
-        throw new Error('No se ha eliminado el usuario.');
-      }
-      this.getUsers();
-    } catch (error) {
-      console.error(error);
-    }
+    this._userService.deleteUser(element.id).subscribe({
+      next: (deletedMessage) => {
+        console.log(deletedMessage);
+      },
+      error: (error) => console.error(error),
+    });
   }
 
   filter(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.dataSource.filter = value.trim().toLocaleLowerCase();
-  }
-
-  getIdentity() {
-    let identity = localStorage.getItem('identitySACA');
-    if (identity !== null) {
-      identity = JSON.parse(identity);
-      this.identity = identity;
-      console.log(this.identity);
-    } else {
-      this._router.navigate(['/user/login']);
-    }
   }
 
   cssCreate(): void {

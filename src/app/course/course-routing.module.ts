@@ -7,7 +7,7 @@ import { CourseComponent } from 'src/app/course/components/course/course.compone
 
 const routes: Routes = [
   {
-    path: 'course',
+    path: '',
     children: [
       { path: '', component: CourseComponent },
       { path: 'id/:id', component: CourseComponent },

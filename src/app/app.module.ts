@@ -10,6 +10,9 @@ import { CourseModule } from 'src/app/course/course.module';
 import { AppComponent } from './app.component';
 import { HomeComponent } from 'src/app/core/components/home.component';
 
+/* Services */
+import { AuthService } from 'src/app/auth/services/auth.service';
+import { UserService } from 'src/app/user/services/user.service';
 @NgModule({
   declarations: [AppComponent, HomeComponent],
   imports: [
@@ -20,6 +23,7 @@ import { HomeComponent } from 'src/app/core/components/home.component';
     UserModule,
     CourseModule,
   ],
+  providers: [AuthService, UserService],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

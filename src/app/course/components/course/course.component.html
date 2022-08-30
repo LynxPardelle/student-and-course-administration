@@ -297,6 +297,7 @@
       Enviar
     </button>
     <button
+      *ngIf="course.id >= 0"
       class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
       (click)="changeEditOption()"
     >

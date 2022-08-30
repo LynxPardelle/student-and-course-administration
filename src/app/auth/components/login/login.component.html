@@ -134,7 +134,7 @@
     <a
       *ngIf="debugMessage === 'Usuario Registrado.'"
       href="/user/login"
-      [routerLink]="['/user/login']"
+      [routerLink]="['/auth/login']"
       class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3 bef-w-250px"
       [exist]="debugMessage === 'Usuario Registrado.'" (ngInit)="cssCreate()"
     >
@@ -147,7 +147,7 @@
   <p class="text-center">¿No tienes cuenta aún?</p>
   <a
     href="/user/register"
-    [routerLink]="['/user/register']"
+    [routerLink]="['/auth/register']"
     class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3 bef-w-100px"
   >
     Regístrate

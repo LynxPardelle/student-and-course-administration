@@ -1,222 +1,200 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { User } from 'src/app/user/models/user';
 import UserInterface from 'src/app/user/interfaces/user';
+import Enviroment from 'src/app/environments/enviroment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UserService {
-  public users: User[] = [
-    {
-      id: 0,
-      name: 'admin',
-      surname: 'admin',
-      email: 'admin@example.com',
-      password: 'password',
-      role: 'admin',
-    },
-    {
-      id: 1,
-      name: 'Alec',
-      surname: 'Montaño',
-      email: 'alec@example.com',
-      password: 'passwordAlec',
-      role: 'profesor',
-    },
-    {
-      id: 2,
-      name: 'Lucy',
-      surname: 'Morning Star',
-      email: 'lucy@morning-star.com',
-      password: '616',
-      role: 'user',
-    },
-    {
-      id: 87,
-      name: 'Pancho',
-      surname: 'Lopez',
-      email: 'pancho@gmail.com',
-      password: '',
-      role: 'user',
-    },
-    {
-      id: 69,
-      name: 'Ang',
-      surname: 'Perez',
-      email: 'ang@gmail.com',
-      password: '',
-      role: 'profesor',
-    },
-  ];
+  public users: User[] = [];
+  public usersSubject: Subject<any> = new Subject();
   public identity: any;
+  private api = Enviroment.api;
 
-  constructor() {}
+  constructor(private _http: HttpClient) {}
 
   // Create
   register(user: User): Observable<any> {
-    return new Observable<any>((suscriptor) => {
-      try {
-        if (this.checkIfUserInterface(user)) {
-          user.id = this.users.length;
-          const chekIfUser = (id: number) => {
-            let hasIt: boolean = false;
-            for (let user of this.users) {
-              if (user.id === id) {
-                hasIt = true;
-              }
-            }
-            if (hasIt === false) {
-              return false;
-            } else {
-              return true;
-            }
-          };
-          while (chekIfUser(user.id)) {
-            user.id++;
-          }
-          this.users.push(user);
-          suscriptor.next(this.users[user.id]);
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid user.');
+    try {
+      if (this.checkIfUserInterface(user)) {
+        user.id = this.users.length;
+        while (
+          this.users.find((userO) => {
+            return typeof userO.id === 'string'
+              ? parseInt(userO.id) === user.id
+              : userO.id === user.id;
+          })
+        ) {
+          user.id++;
         }
-      } catch (err) {
-        suscriptor.error('Error.');
-        console.error(err);
+        this.updateUsersList();
+        return this._http.post<User>(`${this.api}/User/`, user);
+      } else {
+        throw new Error('Not a valid user.');
       }
-    });
+    } catch (err) {
+      console.error(err);
+      return new Observable<any>((suscriptor) => {
+        suscriptor.error(err);
+      });
+    }
   }
 
   // Read
-  getUsers(): Observable<any> {
-    return new Observable<any>((suscriptor) => {
-      try {
-        let users = this.users;
-        this.getIdentity();
-        if (!this.identity || this.identity.role !== 'admin') {
-          for (let user of users) {
-            user.password = '';
-          }
-        }
-        suscriptor.next(users);
-        suscriptor.complete();
-      } catch (err) {
-        suscriptor.error('Error.');
-        console.error(err);
-      }
-    });
+  getUsers(): Observable<User[]> {
+    this.updateUsersList();
+    return this.usersSubject.asObservable();
+  }
+
+  updateUsersList(): void {
+    this._http
+      .get<User[]>(`${this.api}/User`, {
+        headers: new HttpHeaders({
+          'content-type': 'application/json',
+          encoding: 'UTF-8',
+        }),
+      })
+      .subscribe({
+        next: (users) => {
+          this.users = users.map((user) => {
+            if (typeof user.id === 'string') {
+              user.id = parseInt(user.id);
+            }
+            if (!this.identity || this.identity.role !== 'admin') {
+              user.password = '';
+            }
+            return user;
+          });
+          this.usersSubject.next(this.users);
+        },
+        error: (err) => {
+          this.users = [];
+          console.error(err);
+          this.usersSubject.next(this.users);
+          this.usersSubject.error('Error.');
+        },
+      });
   }
 
   getUser(
     id: number | string,
     password: string | null = null
-  ): Observable<any> {
-    return new Observable<any>((suscriptor) => {
-      try {
-        if (typeof id === 'number') {
-          let i: number = -1;
-          console.log(this.users);
-          for (let user of this.users) {
-            if (user.id === id) {
-              i = this.users.indexOf(user);
-            }
-          }
-          if (this.users[i]) {
-            let user = this.users[i];
-            console.log(user);
-            this.getIdentity();
-            if (!this.identity || this.identity.role !== 'admin') {
-              user.password = '';
-            }
-            suscriptor.next(user);
-            suscriptor.complete();
-          } else {
-            throw new Error('Not a valid user.');
-          }
-        } else if (typeof id === 'string') {
-          let myUser: User | null = null;
-          for (let user of this.users) {
-            if (user.email === id && user.password === password) {
-              myUser = user;
-            }
-          }
-          if (myUser === null) {
-            throw new Error('Not a valid user.');
-          }
-          console.log(myUser);
-          this.getIdentity();
+  ): Observable<User> {
+    let userSubject: Subject<any> = new Subject();
+    if (typeof id === 'number') {
+      id.toString();
+    }
+    this._http
+      .get<User>(`${this.api}/User/${id}`, {
+        headers: new HttpHeaders({
+          'content-type': 'application/json',
+          encoding: 'UTF-8',
+        }),
+      })
+      .subscribe({
+        next: (user) => {
+          this.updateUsersList();
           if (!this.identity || this.identity.role !== 'admin') {
-            myUser.password = '';
+            user.password = '';
           }
-          suscriptor.next(myUser);
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid user.');
-        }
-      } catch (err) {
-        console.error(err);
-        suscriptor.error('Error.');
-      }
-    });
+          userSubject.next(user);
+        },
+        error: (error) => {
+          this.updateUsersList();
+          console.error(error);
+        },
+        complete: () => {
+          this.updateUsersList();
+          userSubject.complete();
+        },
+      });
+    return userSubject.asObservable();
+  }
+
+  login(email: string, password: string): Observable<User> {
+    let userSubject: Subject<User> = new Subject();
+    this._http
+      .get<User[]>(`${this.api}/User`, {
+        headers: new HttpHeaders({
+          'content-type': 'application/json',
+          encoding: 'UTF-8',
+        }),
+      })
+      .subscribe({
+        next: (users) => {
+          let user2Log = users.find(
+            (u) => u.email === email && u.password === password
+          );
+          if (user2Log) {
+            userSubject.next(user2Log);
+          } else {
+            this.usersSubject.error('Email o contraseña incorrecta.');
+          }
+        },
+        error: (error) => {
+          this.usersSubject.error(error);
+          console.error(error);
+        },
+        complete: () => userSubject.complete(),
+      });
+    return userSubject.asObservable();
   }
 
   // Update
-  updateUser(user: User) {
-    return new Observable<any>((suscriptor) => {
-      try {
-        let id = user.id;
-        let i = -1;
-        for (let user2check of this.users) {
-          if (user2check.id === id) {
-            i = this.users.indexOf(user2check);
-          }
-        }
-        if (i !== -1) {
-          let oldPassword = this.users[i].password;
-          this.users[i] = user;
-          if (this.users[i].password === '') {
-            this.users[i].password = oldPassword;
-          }
-          let updatedUser = this.users[i];
-          this.getIdentity();
-          if (!this.identity || this.identity.role !== 'admin') {
-            updatedUser.password = '';
-          }
-          suscriptor.next(updatedUser);
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid user.');
-        }
-      } catch (err) {
-        suscriptor.error('Error.');
-        console.error(err);
-      }
+  updateUser(user: User): Observable<User> {
+    let userSubject: Subject<any> = new Subject();
+    let userO = this.users.find((userO) => {
+      return userO.id == user.id;
     });
+    if (user.password === '' && userO && this.checkIfUserInterface(userO)) {
+      user.password = userO.password;
+    }
+    if (user.password !== '') {
+      this._http
+        .put<User>(`${this.api}/User/${user.id.toString()}`, user)
+        .subscribe({
+          next: (user) => {
+            this.updateUsersList();
+            userSubject.next(user);
+          },
+          error: (err) => {
+            this.updateUsersList();
+            console.error(err);
+            userSubject.error(err);
+          },
+          complete: () => {
+            this.updateUsersList();
+            userSubject.complete();
+          },
+        });
+    } else {
+      userSubject.error('La contraseña está vacía.');
+    }
+    return userSubject.asObservable();
   }
 
   // Delete
   deleteUser(id: number) {
-    return new Observable<any>((suscriptor) => {
-      try {
-        let i = -1;
-        for (let user2check of this.users) {
-          if (user2check.id === id) {
-            i = this.users.indexOf(user2check);
-          }
-        }
-        if (i !== -1) {
-          this.users.splice(i, 1);
-          suscriptor.next('User deleted.');
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid user.');
-        }
-      } catch (err) {
-        suscriptor.error('Error');
+    let userSubject: Subject<any> = new Subject();
+    this._http.delete<User>(`${this.api}/User/${id.toString()}`).subscribe({
+      next: () => {
+        this.updateUsersList();
+        userSubject.next('User deleted.');
+      },
+      error: (err) => {
+        this.updateUsersList();
         console.error(err);
-      }
+        userSubject.error(err);
+      },
+      complete: () => {
+        this.updateUsersList();
+        userSubject.complete();
+      },
     });
+    return userSubject.asObservable();
   }
 
   // Utility
@@ -230,14 +208,61 @@ export class UserService {
     );
   }
 
-  getIdentity() {
-    let identity = localStorage.getItem('identitySACA');
+  getIdentity(
+    suscriptorNeeded: boolean = false
+  ): Observable<User> | void | any {
+    let identitySubject: Subject<User | null> = new Subject();
+    let identity: any = localStorage.getItem('identitySACA');
     if (identity !== null) {
       identity = JSON.parse(identity);
-      this.identity = identity;
-      return identity;
+      let id = identity.id;
+      if (id) {
+        if (suscriptorNeeded) {
+          this.getUser(id).subscribe({
+            next: (user: User) => {
+              this.identity = user;
+              localStorage.setItem(
+                'identitySACA',
+                JSON.stringify(this.identity)
+              );
+              identitySubject.next(this.identity);
+              return this.identity;
+            },
+            error: (err: any) => {
+              console.error(err);
+              localStorage.removeItem('identitySACA');
+              identitySubject.error(err);
+            },
+            complete: () => {
+              identitySubject.next(this.identity);
+              return this.identity;
+            },
+          });
+          return identitySubject.asObservable();
+        } else {
+          return identity;
+        }
+      } else {
+        localStorage.removeItem('identitySACA');
+        identitySubject.next(null);
+        if (!suscriptorNeeded) {
+          return null;
+        }
+      }
     } else {
-      return null;
+      localStorage.removeItem('identitySACA');
+      identitySubject.next(null);
+      if (!suscriptorNeeded) {
+        return null;
+      }
     }
+    if (suscriptorNeeded) {
+      return identitySubject.asObservable();
+    }
+  }
+
+  logOut(): void {
+    this.identity = null;
+    localStorage.removeItem('identitySACA');
   }
 }

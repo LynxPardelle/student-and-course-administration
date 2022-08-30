@@ -1,190 +1,135 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Course } from 'src/app/course/models/course';
 import CourseInterface from 'src/app/course/interfaces/course';
 import { UserService } from 'src/app/user/services/user.service';
-
+import Enviroment from 'src/app/environments/enviroment';
+import { User } from 'src/app/user/models/user';
 @Injectable({
   providedIn: 'root',
 })
 export class CourseService {
-  public courses: Course[] = [
-    {
-      id: 0,
-      title: 'Angular',
-      students: [
-        {
-          id: 87,
-          name: 'Pancho',
-          surname: 'Lopez',
-          email: 'pancho@gmail.com',
-          password: '',
-          role: 'user',
-        },
-        {
-          id: 69,
-          name: 'Ang',
-          surname: 'Perez',
-          email: 'ang@gmail.com',
-          password: '',
-          role: 'profesor',
-        },
-      ],
-      profesor: null,
-    },
-    {
-      id: 1,
-      title: 'NGINX',
-      students: [],
-      profesor: {
-        id: 69,
-        name: 'Ang',
-        surname: 'Perez',
-        email: 'ang@gmail.com',
-        password: '',
-        role: 'profesor',
-      },
-    },
-  ];
+  public courses: Course[] = [];
   public coursesSubject: Subject<any> = new Subject();
   public identity: any;
+  private api = Enviroment.api;
 
-  constructor(private _userService: UserService) {}
+  constructor(private _userService: UserService, private _http: HttpClient) {}
 
   // Create
-  createCourse(course: Course): Observable<any> {
-    return new Observable<any>((suscriptor) => {
-      try {
-        if (this.checkIfCourseInterface(course)) {
-          course.id = this.courses.length;
-          const chekIfCourse = (id: number) => {
-            let hasIt: boolean = false;
-            for (let course of this.courses) {
-              if (course.id === id) {
-                hasIt = true;
-              }
-            }
-            if (hasIt === false) {
-              return false;
-            } else {
-              return true;
-            }
-          };
-          while (chekIfCourse(course.id)) {
-            course.id++;
-          }
-          this.courses.push(course);
-          suscriptor.next(this.courses[course.id]);
-          this.coursesSubject.next(this.courses);
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid course.');
+  createCourse(course: Course): Observable<Course> {
+    try {
+      if (this.checkIfCourseInterface(course)) {
+        course.id = this.courses.length;
+        while (
+          this.courses.find((courseO) => {
+            return typeof courseO.id === 'string'
+              ? parseInt(courseO.id) === course.id
+              : courseO.id === course.id;
+          })
+        ) {
+          course.id++;
         }
-      } catch (err) {
-        suscriptor.error('Error.');
-        console.error(err);
+        this.updateCoursesList();
+        return this._http.post<Course>(`${this.api}/Course/`, course);
+      } else {
+        throw new Error('Not a valid course.');
       }
-    });
+    } catch (err) {
+      console.error(err);
+      return new Observable<any>((suscriptor) => {
+        suscriptor.error(err);
+      });
+    }
   }
 
   // Read
-  getCourses(): Observable<any> {
+  getCourses(): Observable<Course[]> {
     return this.coursesSubject.asObservable();
   }
 
   updateCoursesList(): void {
-    this.coursesSubject.next(this.courses);
+    this._http
+      .get<Course[]>(`${this.api}/Course`, {
+        headers: new HttpHeaders({
+          'content-type': 'application/json',
+          encoding: 'UTF-8',
+        }),
+      })
+      .subscribe({
+        next: (courses) => {
+          this.courses = courses.map((course) => {
+            if (typeof course.id === 'string') {
+              course.id = parseInt(course.id);
+            }
+            return course;
+          });
+          this.coursesSubject.next(this.courses);
+        },
+        error: (err) => {
+          this.courses = [];
+          console.error(err);
+          this.coursesSubject.next(this.courses);
+          this.coursesSubject.error('Error.');
+        },
+      });
   }
 
-  getCourse(id: number | string): Observable<any> {
-    return new Observable<any>((suscriptor) => {
-      try {
-        if (typeof id === 'number') {
-          let i: number = -1;
-          for (let course of this.courses) {
-            if (course.id === id) {
-              i = this.courses.indexOf(course);
-            }
-          }
-          if (this.courses[i]) {
-            let course = this.courses[i];
-            suscriptor.next(course);
-            suscriptor.complete();
-          } else {
-            throw new Error('Not a valid course.');
-          }
-        } else if (typeof id === 'string') {
-          let myCourse: Course | null = null;
-          for (let course of this.courses) {
-            if (course.title === id) {
-              myCourse = course;
-            }
-          }
-          if (myCourse === null) {
-            throw new Error('Not a valid course.');
-          }
-          suscriptor.next(myCourse);
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid course.');
-        }
-      } catch (err) {
-        console.error(err);
-        suscriptor.error('Error.');
-      }
+  getCourse(id: number | string): Observable<Course> {
+    if (typeof id === 'number') {
+      id.toString();
+    }
+    return this._http.get<Course>(`${this.api}/Course/${id}`, {
+      headers: new HttpHeaders({
+        'content-type': 'application/json',
+        encoding: 'UTF-8',
+      }),
     });
   }
 
   // Update
-  updateCourse(course: Course) {
-    return new Observable<any>((suscriptor) => {
-      try {
-        let id = course.id;
-        let i = -1;
-        for (let course2check of this.courses) {
-          if (course2check.id === id) {
-            i = this.courses.indexOf(course2check);
-          }
-        }
-        if (i !== -1) {
-          this.courses[i] = course;
-          let updatedCourse = this.courses[id];
-          suscriptor.next(updatedCourse);
-          this.coursesSubject.next(this.courses);
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid course.');
-        }
-      } catch (err) {
-        suscriptor.error('Error.');
-        console.error(err);
-      }
-    });
+  updateCourse(course: Course): Observable<Course> {
+    let courseSubject: Subject<any> = new Subject();
+    this._http
+      .put<Course>(`${this.api}/Course/${course.id.toString()}`, course)
+      .subscribe({
+        next: (course) => {
+          this.updateCoursesList();
+          courseSubject.next(course);
+        },
+        error: (err) => {
+          this.updateCoursesList();
+          console.error(err);
+          courseSubject.error(err);
+        },
+        complete: () => {
+          this.updateCoursesList();
+          courseSubject.complete();
+        },
+      });
+    return courseSubject.asObservable();
   }
 
   // Delete
   deleteCourse(id: number) {
-    return new Observable<any>((suscriptor) => {
-      try {
-        let i = -1;
-        for (let course2check of this.courses) {
-          if (course2check.id === id) {
-            i = this.courses.indexOf(course2check);
-          }
-        }
-        if (i !== -1) {
-          this.courses.splice(i, 1);
-          suscriptor.next('Course deleted.');
-          this.coursesSubject.next(this.courses);
-          suscriptor.complete();
-        } else {
-          throw new Error('Not a valid course.');
-        }
-      } catch (err) {
-        suscriptor.error('Error');
+    let courseSubject: Subject<any> = new Subject();
+    this._http.delete<Course>(`${this.api}/Course/${id.toString()}`).subscribe({
+      next: () => {
+        this.updateCoursesList();
+        courseSubject.next('Course deleted.');
+      },
+      error: (err) => {
+        this.updateCoursesList();
         console.error(err);
-      }
+        courseSubject.error(err);
+      },
+      complete: () => {
+        this.updateCoursesList();
+        courseSubject.complete();
+      },
     });
+    return courseSubject.asObservable();
   }
 
   // Utility

@@ -1,12 +1,14 @@
-import { Component, OnInit, ViewChild, TemplateRef } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  ViewChild,
+  TemplateRef,
+  OnDestroy,
+} from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTable, MatTableDataSource } from '@angular/material/table';
 import { Router, ActivatedRoute } from '@angular/router';
-import {
-  lastValueFrom,
-  Subscription,
-  firstValueFrom,
-} from 'rxjs';
+import { lastValueFrom, Subscription, firstValueFrom } from 'rxjs';
 import { concatWith, filter, map, mergeMap } from 'rxjs/operators';
 
 import { UserService } from 'src/app/user/services/user.service';
@@ -24,7 +26,7 @@ import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap
   templateUrl: './courses.component.html',
   styleUrls: ['./courses.component.scss'],
 })
-export class CoursesComponent implements OnInit {
+export class CoursesComponent implements OnInit, OnDestroy {
   modalRef?: BsModalRef;
   public identity: any = null;
   public columns: string[] = ['title', 'students', 'profesor', 'actions'];
@@ -35,6 +37,7 @@ export class CoursesComponent implements OnInit {
   public editCourseForm: FormGroup;
   public users: User[] = [];
   public coursesSubscription!: Subscription;
+  public usersSubscription!: Subscription;
   @ViewChild(MatTable) tabla!: MatTable<User>;
 
   public filterValue: string = '';
@@ -79,8 +82,8 @@ export class CoursesComponent implements OnInit {
           )
         )
       )
-      .subscribe(
-        (courses) => {
+      .subscribe({
+        next: (courses) => {
           console.log(courses);
           if (
             courses[0] &&
@@ -94,40 +97,40 @@ export class CoursesComponent implements OnInit {
             this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
           }
         },
-        (error) => {
+        error: (error) => {
           console.error(error);
-        }
-      );
+        },
+      });
     this._courseService.updateCoursesList();
   }
 
   ngOnInit(): void {
     // this.debugOptions();
-    this.getUsers();
-    this._userService.getIdentity();
-    this.identity = this._userService.identity;
+    this.usersSubscription = this._userService
+      .getUsers()
+      .pipe()
+      .subscribe({
+        next: (users) => {
+          this.users = users;
+        },
+        error: (err) => console.error(err),
+      });
+    this._userService.updateUsersList();
+    this._userService.getIdentity(true).subscribe({
+      next: (identity: any) => {
+        this.identity = identity;
+      },
+      error: (err: any) => {
+        this._router.navigate(['/auth/login']);
+        console.error(err);
+      },
+    });
     this._befService.cssCreate();
-  }
-
-  getUsers() {
-    (async () => {
-      try {
-        let users = await lastValueFrom(this._userService.getUsers());
-        if (
-          !users ||
-          (users[0] && !this._userService.checkIfUserInterface(users[0]))
-        ) {
-          throw new Error('There is not users.');
-        }
-        this.users = users;
-      } catch (error) {
-        console.error(error);
-      }
-    })();
   }
 
   ngOnDestroy(): void {
     this.coursesSubscription.unsubscribe();
+    this.usersSubscription.unsubscribe();
   }
 
   hasItStudent(user: User, course: Course | null = null): boolean {

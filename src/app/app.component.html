@@ -47,10 +47,10 @@
           >Inicio</a
         >
       </li>
-      <li class="list-group-item" *ngIf="identity">
+      <li class="list-group-item" *ngIf="identity && identity.id">
         <a
-          href="/user"
-          [routerLink]="['/user']"
+          href="/user/id/{{ identity.id }}"
+          [routerLink]="['/user/id', identity.id]"
           data-bs-dismiss="offcanvas"
           aria-label="Close"
         >
@@ -87,7 +87,7 @@
       <li class="list-group-item">
         <a
           href="/user/login"
-          [routerLink]="['/user/login']"
+          [routerLink]="['/auth/login']"
           data-bs-dismiss="offcanvas"
           aria-label="Close"
         >
@@ -100,7 +100,7 @@
       <li class="list-group-item">
         <a
           href="/user/register"
-          [routerLink]="['/user/register']"
+          [routerLink]="['/auth/register']"
           data-bs-dismiss="offcanvas"
           aria-label="Close"
         >

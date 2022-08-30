@@ -62,10 +62,8 @@ export class LoginComponent implements OnInit {
       if (!this.isRegister) {
         await setTimeout(async () => {
           try {
-            console.log(this.loginForm.get('email')?.getRawValue());
-            console.log(this.loginForm.get('password')?.getRawValue());
             const identity = await lastValueFrom(
-              this._userService.getUser(
+              this._userService.login(
                 this.loginForm.get('email')?.getRawValue(),
                 this.loginForm.get('password')?.getRawValue()
               )

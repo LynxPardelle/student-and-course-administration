@@ -28,8 +28,8 @@ export class UserComponent implements OnInit {
   public editUserForm: FormGroup;
 
   public columns: string[] = ['title', 'students', 'profesor', 'actions'];
-  public ELEMENT_DATA: User[] = [];
-  public dataSource: MatTableDataSource<User> = new MatTableDataSource(
+  public ELEMENT_DATA: Course[] = [];
+  public dataSource: MatTableDataSource<Course> = new MatTableDataSource(
     this.ELEMENT_DATA
   );
 
@@ -86,7 +86,7 @@ export class UserComponent implements OnInit {
           !this.identity.role ||
           (this.identity.role !== 'admin' && this.identity.role !== 'profesor')
         ) {
-          this._router.navigate(['login']);
+          this._router.navigate(['auth/login']);
         }
       },
       (error) => {
@@ -217,7 +217,7 @@ export class UserComponent implements OnInit {
     if (identity !== null) {
       this.identity = identity;
     } else {
-      this._router.navigate(['/user/login']);
+      this._router.navigate(['/auth/login']);
     }
   }
 

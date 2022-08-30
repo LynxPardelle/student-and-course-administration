@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterModule, ActivatedRoute, Params } from '@angular/router';
 
+import { UserService } from 'src/app/user/services/user.service';
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
 @Component({
@@ -14,23 +15,18 @@ export class HomeComponent implements OnInit {
   constructor(
     private _route: ActivatedRoute,
     private _router: Router,
-    private _befService: BefService
+    private _befService: BefService,
+    private _userService: UserService
   ) {}
 
   ngOnInit(): void {
-    this.getIdentity();
-    if (this.identity === null) {
-      this._router.navigate(['/user/login']);
-    }
-  }
-
-  getIdentity() {
-    let identity = localStorage.getItem('identitySACA');
-    if (identity !== null) {
-      identity = JSON.parse(identity);
-      this.identity = identity;
-      console.log(this.identity);
-    }
+    this._userService.getIdentity(true).subscribe({
+      next: (identity: any) => (this.identity = identity),
+      error: (err: any) => {
+        console.error(err);
+        this._router.navigate(['/auth/login']);
+      },
+    });
   }
 
   cssCreate(): void {
