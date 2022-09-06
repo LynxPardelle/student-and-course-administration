@@ -1,43 +1,44 @@
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClient, HttpHandler } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import {
-  loadedCoursesSelector,
-  loadingCoursesSelector,
-} from 'src/app/state/selectors/course.selector';
+  ActiveSesionSelector,
+  IdentitySesionSelector,
+} from 'src/app/state/selectors/sesion.selector';
 
-import { CourseComponent } from './course.component';
+import { HomeComponent } from './home.component';
 
-describe('CourseComponent', () => {
-  let component: CourseComponent;
-  let fixture: ComponentFixture<CourseComponent>;
+describe('HomeComponent', () => {
+  let component: HomeComponent;
+  let fixture: ComponentFixture<HomeComponent>;
 
   let store: MockStore;
-  const initialState = { loading: false, courses: [] };
+  const initialState = { active: false };
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RouterTestingModule, HttpClientModule, ReactiveFormsModule],
-      declarations: [CourseComponent],
+      imports: [RouterTestingModule],
+      declarations: [HomeComponent],
       providers: [
+        HttpClient,
+        HttpHandler,
         provideMockStore({
           initialState,
           selectors: [
             {
-              selector: loadingCoursesSelector,
+              selector: ActiveSesionSelector,
               value: false,
             },
             {
-              selector: loadedCoursesSelector,
-              value: [],
+              selector: IdentitySesionSelector,
+              value: undefined,
             },
           ],
         }),
       ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(CourseComponent);
+    fixture = TestBed.createComponent(HomeComponent);
     component = fixture.componentInstance;
 
     store = TestBed.inject(MockStore);

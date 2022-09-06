@@ -1,8 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-// import { BrowserModule } from '@angular/platform-browser';
 import { ReactiveFormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
 
 /* Modules */
 import { NgxBootstrapModule } from 'src/app/shared/ngx-bootstrap.module';
@@ -27,15 +25,12 @@ import { NameParserPipe } from 'src/app/shared/pipes/name-parser.pipe';
   ],
   imports: [
     CommonModule,
-    // BrowserModule,
-    HttpClientModule,
+    ReactiveFormsModule,
     NgxBootstrapModule,
     MaterialModule,
   ],
   exports: [
-    // BrowserModule,
     ReactiveFormsModule,
-    HttpClientModule,
     NgxBootstrapModule,
     MaterialModule,
     NgInitDirective,

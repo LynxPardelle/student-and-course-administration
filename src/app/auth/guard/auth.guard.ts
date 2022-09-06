@@ -11,9 +11,12 @@ import {
   RouterStateSnapshot,
   UrlTree,
 } from '@angular/router';
+import { Store } from '@ngrx/store';
 import { map, Observable } from 'rxjs';
 import { Sesion } from 'src/app/auth/interfaces/sesion';
 import { AuthService } from 'src/app/auth/services/auth.service';
+import { AppState } from 'src/app/state/app.state';
+import { SesionSelector } from 'src/app/state/selectors/sesion.selector';
 
 @Injectable({
   providedIn: 'root',
@@ -21,7 +24,11 @@ import { AuthService } from 'src/app/auth/services/auth.service';
 export class AuthGuard
   implements CanActivate, CanLoad, CanActivateChild, CanDeactivate<unknown>
 {
-  constructor(private auth: AuthService, private router: Router) {}
+  constructor(
+    private store: Store<AppState>,
+    private auth: AuthService,
+    private router: Router
+  ) {}
 
   canActivate(
     route: ActivatedRouteSnapshot,
@@ -31,7 +38,7 @@ export class AuthGuard
     | Promise<boolean | UrlTree>
     | boolean
     | UrlTree {
-    return this.auth.getSesion().pipe(
+    return this.store.select(SesionSelector).pipe(
       map((sesion: Sesion) => {
         if (sesion.active) {
           return true;
@@ -51,7 +58,7 @@ export class AuthGuard
     | Promise<boolean | UrlTree>
     | boolean
     | UrlTree {
-    return this.auth.getSesion().pipe(
+    return this.store.select(SesionSelector).pipe(
       map((sesion: Sesion) => {
         if (sesion.active) {
           return true;
@@ -73,7 +80,7 @@ export class AuthGuard
     | Promise<boolean | UrlTree>
     | boolean
     | UrlTree {
-    return this.auth.getSesion().pipe(
+    return this.store.select(SesionSelector).pipe(
       map((sesion: Sesion) => {
         if (sesion.active) {
           return true;
@@ -93,7 +100,7 @@ export class AuthGuard
     | Promise<boolean | UrlTree>
     | boolean
     | UrlTree {
-    return this.auth.getSesion().pipe(
+    return this.store.select(SesionSelector).pipe(
       map((sesion: Sesion) => {
         if (sesion.active) {
           return true;

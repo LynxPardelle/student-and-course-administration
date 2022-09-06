@@ -2,13 +2,28 @@
   <nav class="navbar navbar-expand-lg navbar-dark bef bef-bg-mystic">
     <div class="container-fluid">
       <a
-        class="navbar-brand bef bef-text-lavender bef bef-w-50per bef-w-sm-75per bef-w-md-90per text-wrap"
+        class="navbar-brand bef bef-text-lavender bef bef-w-50per bef-w-sm-33per bef-w-md-33per text-wrap order-0"
         href="#"
         appTitles20
         >{{ title }}</a
       >
+      <ng-container *ngIf="identity$ | async as identity">
+        <p
+          class="bef bef-text-lavender my-0 order-2 order-sm-1 col-11 col-sm-2 text-end"
+          [exist]="!!identity"
+          (ngInit)="cssCreate()"
+        >
+          {{ identity | nameParser }}
+        </p>
+      </ng-container>
+      <h2
+        appTitles20
+        class="mx-4 bef bef-text-lavender order-3 order-sm-2 text-center col-11 col-sm-3"
+      >
+        {{ ComponentRoot }}
+      </h2>
       <button
-        class="btn bef bef-btnOutline-lavender bef-textHover-mystic"
+        class="btn bef bef-btnOutline-lavender bef-textHover-mystic order-1 order-sm-3 order-md-2"
         type="button"
         data-bs-toggle="offcanvas"
         data-bs-target="#offcanvasAside"
@@ -47,30 +62,33 @@
           >Inicio</a
         >
       </li>
-      <li class="list-group-item" *ngIf="identity && identity.id">
-        <a
-          href="/user/id/{{ identity.id }}"
-          [routerLink]="['/user/id', identity.id]"
+      <ng-container *ngIf="identity$ | async as identity">
+        <li class="list-group-item">
+          <a
+            href="/user/id/{{ identity.id }}"
+            [routerLink]="['/user/id', identity.id]"
+            data-bs-dismiss="offcanvas"
+            aria-label="Close"
+          >
+            Perfil
+          </a>
+        </li>
+        <li
+          class="list-group-item"
+          *ngIf="access === 'admin'"
           data-bs-dismiss="offcanvas"
           aria-label="Close"
         >
-          Perfil
-        </a>
-      </li>
-      <li
-        class="list-group-item"
-        *ngIf="identity && identity.role && identity.role === 'admin'"
-        data-bs-dismiss="offcanvas"
-        aria-label="Close"
-      >
-        <a
-          href="/user/list"
-          [routerLink]="['/user/list']"
-          data-bs-dismiss="offcanvas"
-          aria-label="Close"
-          >Usuarios</a
-        >
-      </li>
+          <a
+            href="/user/list"
+            [routerLink]="['/user/list']"
+            data-bs-dismiss="offcanvas"
+            aria-label="Close"
+            >Usuarios</a
+          >
+        </li>
+      </ng-container>
+
       <li
         class="list-group-item"
         data-bs-dismiss="offcanvas"
@@ -91,7 +109,7 @@
           data-bs-dismiss="offcanvas"
           aria-label="Close"
         >
-          <ng-container *ngIf="identity; else elseLogInTemplate">
+          <ng-container *ngIf="identity$ | async; else elseLogInTemplate">
             Cambiar de cuenta
           </ng-container>
           <ng-template #elseLogInTemplate> Iniciar Sesión </ng-template>
@@ -109,16 +127,20 @@
       </li>
     </ul>
     <button
+      id="logOutBTN"
       class="btn bef bef-btn-mystic bef-text-lavender mb-3"
-      *ngIf="identity"
+      *ngIf="identity$ | async"
       (click)="logOut()"
     >
       Logout
     </button>
   </div>
 </aside>
-<body class="bef bef-py-4rem bef bef-bg-lavender__OPA__0_125 bef-hmn-100vh">
-  <router-outlet></router-outlet>
+<body class="bef bef-pt-12rem bef-pt-sm-8rem bef-pt-lg-5rem bef-pb-5rem bef-bg-lavender__OPA__0_125 bef-hmn-100vh">
+  <router-outlet
+    (activate)="onActivate($event)"
+    (deactivate)="onDeactivate($event)"
+  ></router-outlet>
 </body>
 <footer class="d-flex position-fixed bottom-0 w-100 bef bef-bg-mystic p-3">
   <p class="bef bef-text-lavender text-center">

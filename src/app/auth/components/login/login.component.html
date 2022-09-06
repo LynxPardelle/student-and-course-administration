@@ -106,21 +106,24 @@
     </p>
   </div>
   <!-- Role -->
-  <div
-    class="my-3"
-    *ngIf="isRegister && identity && identity.role && identity.role === 'admin'"
-  >
-    <label class="h4">Rol</label>
-    <select class="form-select" formControlName="role" aria-label="Role select">
-      <option
-        *ngFor="let role of roleOptions"
-        [ngValue]="role"
-        value="{{ role }}"
+  <ng-container *ngIf="identity$ | async as identity">
+    <div class="my-3" *ngIf="isRegister && identity.role === 'admin'">
+      <label class="h4">Rol</label>
+      <select
+        class="form-select"
+        formControlName="role"
+        aria-label="Role select"
       >
-        {{ role }}
-      </option>
-    </select>
-  </div>
+        <option
+          *ngFor="let role of roleOptions"
+          [ngValue]="role"
+          value="{{ role }}"
+        >
+          {{ role }}
+        </option>
+      </select>
+    </div>
+  </ng-container>
   <!-- Send -->
   <button
     type="submit"
@@ -136,7 +139,8 @@
       href="/user/login"
       [routerLink]="['/auth/login']"
       class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3 bef-w-250px"
-      [exist]="debugMessage === 'Usuario Registrado.'" (ngInit)="cssCreate()"
+      [exist]="debugMessage === 'Usuario Registrado.'"
+      (ngInit)="cssCreate()"
     >
       Inicia sesión aquí
     </a>

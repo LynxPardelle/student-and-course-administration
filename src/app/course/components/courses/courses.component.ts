@@ -7,9 +7,10 @@ import {
 } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTable, MatTableDataSource } from '@angular/material/table';
-import { Router, ActivatedRoute } from '@angular/router';
-import { lastValueFrom, Subscription, firstValueFrom } from 'rxjs';
-import { concatWith, filter, map, mergeMap } from 'rxjs/operators';
+import { Router } from '@angular/router';
+import { lastValueFrom, Subscription, firstValueFrom, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { Store } from '@ngrx/store';
 
 import { UserService } from 'src/app/user/services/user.service';
 import { User } from 'src/app/user/models/user';
@@ -19,16 +20,23 @@ import { Course } from 'src/app/course/models/course';
 
 import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 
+import { AppState } from 'src/app/state/app.state';
+
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
+import { CoursesLoaded } from 'src/app/state/actions/course.actions';
+import { AuthService } from 'src/app/auth/services/auth.service';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
 @Component({
   selector: 'app-courses',
   templateUrl: './courses.component.html',
   styleUrls: ['./courses.component.scss'],
+  providers: [BsModalService, BsModalRef],
 })
 export class CoursesComponent implements OnInit, OnDestroy {
   modalRef?: BsModalRef;
-  public identity: any = null;
+  public identity$!: Observable<User | undefined>;
+  public access: string = 'public';
   public columns: string[] = ['title', 'students', 'profesor', 'actions'];
   public ELEMENT_DATA: Course[] = [];
   public dataSource: MatTableDataSource<Course> = new MatTableDataSource(
@@ -44,12 +52,13 @@ export class CoursesComponent implements OnInit, OnDestroy {
   public filterType: string = '';
   constructor(
     private fb: FormBuilder,
-    private _route: ActivatedRoute,
     private _router: Router,
+    private _authService: AuthService,
     private _userService: UserService,
     private _courseService: CourseService,
     private _befService: BefService,
-    private modalService: BsModalService
+    private modalService: BsModalService,
+    private store: Store<AppState>
   ) {
     this.editCourseForm = this.fb.group({
       id: ['', [Validators.required]],
@@ -89,6 +98,7 @@ export class CoursesComponent implements OnInit, OnDestroy {
             courses[0] &&
             this._courseService.checkIfCourseInterface(courses[0])
           ) {
+            this.store.dispatch(CoursesLoaded({ courses: courses }));
             this.ELEMENT_DATA = courses;
             this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
           } else {
@@ -116,14 +126,20 @@ export class CoursesComponent implements OnInit, OnDestroy {
         error: (err) => console.error(err),
       });
     this._userService.updateUsersList();
-    this._userService.getIdentity(true).subscribe({
-      next: (identity: any) => {
-        this.identity = identity;
+    this.identity$ = this.store.select(IdentitySesionSelector);
+    this.identity$.subscribe({
+      next: (i) => {
+        if (!this._userService.checkIfUserInterface(i)) {
+          this._router.navigate(['/auth/login']);
+        } else {
+          this.access = i.role;
+        }
       },
-      error: (err: any) => {
-        this._router.navigate(['/auth/login']);
-        console.error(err);
+      error: (e) => {
+        console.error(e);
+        this.access = 'public';
       },
+      complete: () => (this.access = 'public'),
     });
     this._befService.cssCreate();
   }

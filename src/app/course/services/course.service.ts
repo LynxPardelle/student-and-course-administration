@@ -13,7 +13,7 @@ export class CourseService {
   public courses: Course[] = [];
   public coursesSubject: Subject<any> = new Subject();
   public identity: any;
-  private api = Enviroment.api;
+  private readonly api = Enviroment.api;
 
   constructor(private _userService: UserService, private _http: HttpClient) {}
 

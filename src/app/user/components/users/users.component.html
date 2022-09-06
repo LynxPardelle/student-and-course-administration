@@ -1,66 +1,74 @@
 <h2 class="my-5 text-center" appTitles20>Usuarios</h2>
-<div class="bef bef-bg-mystic bef-p-1rem w-100 d-flex justify-content-between">
-  <h3 class="text-light my-0">Usuarios</h3>
-  <mat-form-field>
-    <mat-label class="text-light">Buscar</mat-label>
-    <input
-      type="text"
-      class="form-control bg-light"
-      (keyup)="filter($event)"
-      matInput
-    />
-  </mat-form-field>
-</div>
-<table mat-table [dataSource]="dataSource" class="w-100">
-  <!-- Name Column -->
-  <ng-container matColumnDef="name">
-    <th mat-header-cell *matHeaderCellDef class="text-center">Nombre</th>
-    <td mat-cell *matCellDef="let element" class="text-center">
-      {{ element | nameParser }}
-    </td>
-  </ng-container>
+<ng-container *ngIf="ELEMENT_DATA.length >= 0">
+  <div
+    class="bef bef-bg-mystic bef-p-1rem w-100 d-flex justify-content-between"
+  >
+    <h3 class="text-light my-0">Usuarios</h3>
+    <mat-form-field>
+      <mat-label class="text-light">Buscar</mat-label>
+      <input
+        type="text"
+        class="form-control bg-light"
+        (keyup)="filter($event)"
+        matInput
+      />
+    </mat-form-field>
+  </div>
+  <table mat-table [dataSource]="dataSource" class="w-100">
+    <!-- Name Column -->
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef class="text-center">Nombre</th>
+      <td mat-cell *matCellDef="let element" class="text-center">
+        {{ element | nameParser }}
+      </td>
+    </ng-container>
 
-  <!-- Role Column -->
-  <ng-container matColumnDef="role">
-    <th mat-header-cell *matHeaderCellDef class="text-center">Role</th>
-    <td mat-cell *matCellDef="let element" class="text-center">
-      {{ element.role !== "admin" ? element.role : "user" }}
-    </td>
-  </ng-container>
+    <!-- Role Column -->
+    <ng-container matColumnDef="role">
+      <th mat-header-cell *matHeaderCellDef class="text-center">Role</th>
+      <td mat-cell *matCellDef="let element" class="text-center">
+        {{ element.role !== "admin" ? element.role : "user" }}
+      </td>
+    </ng-container>
 
-  <!-- Actions Column -->
-  <ng-container matColumnDef="actions">
-    <th mat-header-cell *matHeaderCellDef class="text-center">Acciones</th>
-    <td mat-cell *matCellDef="let element" class="text-center">
-      <button mat-icon-button (click)="openModal(templateActionEdit, element)">
-        <mat-icon>edit</mat-icon>
-      </button>
-      <button mat-icon-button (click)="delete(element)">
-        <mat-icon>delete</mat-icon>
-      </button>
-      <a
-        href="/user/id/{{ element.id }}"
-        [routerLink]="['/user/id/' + element.id]"
-        mat-icon-button
-      >
-        <mat-icon>preview</mat-icon>
-      </a>
-    </td>
-  </ng-container>
+    <!-- Actions Column -->
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef class="text-center">Acciones</th>
+      <td mat-cell *matCellDef="let element" class="text-center">
+        <button
+          mat-icon-button
+          (click)="openModal(templateActionEdit); setUserEdit(element)"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button (click)="delete(element)">
+          <mat-icon>delete</mat-icon>
+        </button>
+        <a
+          href="/user/id/{{ element.id }}"
+          [routerLink]="['/user/id/' + element.id]"
+          mat-icon-button
+        >
+          <mat-icon>preview</mat-icon>
+        </a>
+      </td>
+    </ng-container>
 
-  <tr mat-header-row *matHeaderRowDef="columns"></tr>
-  <tr mat-row *matRowDef="let row; columns: columns"></tr>
-</table>
-<div class="bef bef-bg-mystic bef-p-1rem bef-h-2rem w-100 d-flex justify-content-between">
-</div>
+    <tr mat-header-row *matHeaderRowDef="columns"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns"></tr>
+  </table>
+  <div
+    class="bef bef-bg-mystic bef-p-1rem bef-h-2rem w-100 d-flex justify-content-between"
+  ></div>
+</ng-container>
 <a
   class="d-block btn bef bef-btnOutline-mystic my-3 mx-auto bef-textHover-lavender bef-w-12rem"
   href="/register"
   [routerLink]="['/register']"
   data-bs-dismiss="offcanvas"
   aria-label="Close"
-  *ngIf="identity && identity.role && identity.role === 'admin'"
-  [exist]="identity && identity.role && identity.role === 'admin'"
+  *ngIf="access === 'admin'"
+  [exist]="access === 'admin'"
   (ngInit)="cssCreate()"
 >
   Crear nuevo usuario
@@ -130,53 +138,50 @@
           (Debe tener como mínimo 7 caracteres)
         </p>
       </div>
-      <!-- Password -->
-      <div
-        class="my-3"
-        *ngIf="
-          identity &&
-          ((identity.email &&
-            identity.email === editUserForm.get('password')?.value) ||
-            (identity.role && identity.role === 'admin'))
-        "
-      >
-        <label class="h4">Password</label>
-        <input
-          class="form-control bg-transparent"
-          type="password"
-          formControlName="password"
-          required
-        />
-        <p
-          class="bef bef-text-blood fw-bold"
-          *ngIf="editUserForm.get('password')?.touched && editUserForm.get('password')?.errors?.['required']"
-          [exist]="editUserForm.get('password')?.errors?.['required']"
-          (ngInit)="cssCreate()"
+      <ng-container *ngIf="identity$ | async as identity">
+        <!-- Password -->
+        <div
+          class="my-3"
+          *ngIf="
+            (identity.id && identity.id === editUserForm.get('id')?.value) ||
+            access === 'admin'
+          "
         >
-          (La contraseña no puede quedar vacía)
-        </p>
-        <p
-          class="bef bef-text-blood fw-bold"
-          *ngIf="editUserForm.get('password')?.touched && editUserForm.get('password')?.errors?.['maxlength']"
-          [exist]="editUserForm.get('password')?.errors?.['maxlength']"
-          (ngInit)="cssCreate()"
-        >
-          (Debe tener como máximo 64 caracteres)
-        </p>
-        <p
-          class="bef bef-text-blood fw-bold"
-          *ngIf="editUserForm.get('password')?.touched && editUserForm.get('password')?.errors?.['minlength']"
-          [exist]="editUserForm.get('password')?.errors?.['minlength']"
-          (ngInit)="cssCreate()"
-        >
-          (Debe tener como mínimo 4 caracteres)
-        </p>
-      </div>
+          <label class="h4">Password</label>
+          <input
+            class="form-control bg-transparent"
+            type="password"
+            formControlName="password"
+            required
+          />
+          <p
+            class="bef bef-text-blood fw-bold"
+            *ngIf="editUserForm.get('password')?.touched && editUserForm.get('password')?.errors?.['required']"
+            [exist]="editUserForm.get('password')?.errors?.['required']"
+            (ngInit)="cssCreate()"
+          >
+            (La contraseña no puede quedar vacía)
+          </p>
+          <p
+            class="bef bef-text-blood fw-bold"
+            *ngIf="editUserForm.get('password')?.touched && editUserForm.get('password')?.errors?.['maxlength']"
+            [exist]="editUserForm.get('password')?.errors?.['maxlength']"
+            (ngInit)="cssCreate()"
+          >
+            (Debe tener como máximo 64 caracteres)
+          </p>
+          <p
+            class="bef bef-text-blood fw-bold"
+            *ngIf="editUserForm.get('password')?.touched && editUserForm.get('password')?.errors?.['minlength']"
+            [exist]="editUserForm.get('password')?.errors?.['minlength']"
+            (ngInit)="cssCreate()"
+          >
+            (Debe tener como mínimo 4 caracteres)
+          </p>
+        </div>
+      </ng-container>
       <!-- Role -->
-      <div
-        class="my-3"
-        *ngIf="identity && identity.role && identity.role === 'admin'"
-      >
+      <div class="my-3" *ngIf="access === 'admin'">
         <label class="h4">Rol</label>
         <select
           class="form-select"

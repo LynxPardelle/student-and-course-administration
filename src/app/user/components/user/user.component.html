@@ -6,13 +6,7 @@
   </h2>
   <h3 class="text-center h6">{{ user.email }}</h3>
 
-  <ng-container
-    *ngIf="
-      identity &&
-      identity.role &&
-      (identity.role === 'admin' || identity.role === 'profesor')
-    "
-  >
+  <ng-container *ngIf="access === 'admin' || access === 'profesor'">
     <h4>{{ "Role: " + user.role }}</h4>
   </ng-container>
 
@@ -46,9 +40,7 @@
         <td mat-cell *matCellDef="let element" class="text-center">
           <ng-container
             *ngIf="
-              !identity ||
-                !identity.role ||
-                (identity.role !== 'admin' && identity.role !== 'profesor');
+              access !== 'admin' && access !== 'profesor';
               else elseListStudentsTemplate
             "
           >
@@ -260,10 +252,7 @@
       </p>
     </div>
     <!-- Role -->
-    <div
-      class="my-3"
-      *ngIf="identity && identity.role && identity.role === 'admin'"
-    >
+    <div class="my-3" *ngIf="access === 'admin'">
       <label class="h4">Rol</label>
       <select
         class="form-select"

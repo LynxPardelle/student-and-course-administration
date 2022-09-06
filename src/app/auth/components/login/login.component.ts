@@ -1,19 +1,20 @@
 import { Component, OnInit } from '@angular/core';
 import { Validators, FormBuilder } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute, Params } from '@angular/router';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Observable } from 'rxjs';
 
 import { UserService } from 'src/app/user/services/user.service';
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
-import { throwError } from 'rxjs';
+import { AuthService } from 'src/app/auth/services/auth.service';
+import { User } from 'src/app/user/models/user';
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
 })
 export class LoginComponent implements OnInit {
-  public identity: any = null;
+  public identity$!: Observable<User | undefined>;
   public debugMessage!: string;
   public isRegister: boolean = false;
 
@@ -38,6 +39,7 @@ export class LoginComponent implements OnInit {
     private _router: Router,
     private fb: FormBuilder,
     private _befService: BefService,
+    private _authService: AuthService,
     private _userService: UserService
   ) {}
 
@@ -52,7 +54,6 @@ export class LoginComponent implements OnInit {
       this.loginForm.get('surname')?.addValidators([Validators.required]);
       this.loginForm.get('role')?.addValidators([Validators.required]);
     }
-    this.getIdentity();
     this._befService.cssCreate();
   }
 
@@ -115,14 +116,6 @@ export class LoginComponent implements OnInit {
     } else {
       this.debugMessage = 'Hay datos inválidos en el formulario.';
       this._befService.cssCreate();
-    }
-  }
-
-  getIdentity() {
-    let identity = localStorage.getItem('identitySACA');
-    if (identity !== null) {
-      identity = JSON.parse(identity);
-      this.identity = identity;
     }
   }
 

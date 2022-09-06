@@ -8,7 +8,7 @@ import {
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTable, MatTableDataSource } from '@angular/material/table';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subscription, lastValueFrom } from 'rxjs';
+import { Subscription, lastValueFrom, Observable } from 'rxjs';
 
 import { UserService } from 'src/app/user/services/user.service';
 import { User } from 'src/app/user/models/user';
@@ -17,14 +17,20 @@ import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
+import { AuthService } from 'src/app/auth/services/auth.service';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
+import { AppState } from 'src/app/state/app.state';
+import { Store } from '@ngrx/store';
 @Component({
   selector: 'app-users',
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.scss'],
+  providers: [BsModalService, BsModalRef],
 })
 export class UsersComponent implements OnInit, OnDestroy {
   modalRef?: BsModalRef;
-  public identity: any = null;
+  public identity$!: Observable<User | undefined>;
+  public access: string = 'public';
   public columns: string[] = ['name', 'role', 'actions'];
   public ELEMENT_DATA: User[] = [];
   public dataSource: MatTableDataSource<User> = new MatTableDataSource(
@@ -35,9 +41,11 @@ export class UsersComponent implements OnInit, OnDestroy {
   public usersSubscription!: Subscription;
   @ViewChild(MatTable) tabla!: MatTable<User>;
   constructor(
+    private store: Store<AppState>,
     private fb: FormBuilder,
     private _route: ActivatedRoute,
     private _router: Router,
+    private _authService: AuthService,
     private _userService: UserService,
     private _befService: BefService,
     private modalService: BsModalService
@@ -60,30 +68,31 @@ export class UsersComponent implements OnInit, OnDestroy {
       ],
       role: [this.roleOptions[0]],
     });
-    this.usersSubscription = this._userService
-      .getUsers()
-      .pipe()
-      .subscribe({
-        next: (users) => {
-          this.ELEMENT_DATA = users;
-          this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
-        },
-        error: (err) => console.error(err),
-      });
-    this._userService.updateUsersList();
   }
 
   ngOnInit(): void {
-    this._userService.getIdentity(true).subscribe({
-      next: (identity: any) => {
-        this.identity = identity;
+    this.identity$ = this.store.select(IdentitySesionSelector);
+    this.identity$.subscribe({
+      next: (i) => {
+        if (!this._userService.checkIfUserInterface(i)) {
+          this._router.navigate(['/auth/login']);
+        } else {
+          this.access = i.role;
+        }
       },
-      error: (err: any) => {
-        this._router.navigate(['/auth/login']);
-        console.error(err);
+      error: (e) => {
+        console.error(e);
+        this.access = 'public';
       },
     });
-    this._befService.cssCreate();
+    this.usersSubscription = this._userService.getUsers().subscribe({
+      next: (users) => {
+        this.ELEMENT_DATA = users;
+        this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
+      },
+      error: (err) => console.error(err),
+    });
+    this.cssCreate();
   }
 
   ngOnDestroy(): void {
@@ -93,16 +102,18 @@ export class UsersComponent implements OnInit, OnDestroy {
   async edit() {
     try {
       let userUpdated = await lastValueFrom(
-        this._userService.updateUser({
-          id: this.editUserForm.get('id')?.getRawValue(),
-          name: this.editUserForm.get('name')?.getRawValue(),
-          surname: this.editUserForm.get('surname')?.getRawValue(),
-          email: this.editUserForm.get('email')?.getRawValue(),
-          password: this.editUserForm.get('password')?.getRawValue(),
-          role: this.editUserForm.get('role')?.getRawValue(),
-        })
+        this._userService.updateUser(
+          {
+            id: this.editUserForm.get('id')?.getRawValue(),
+            name: this.editUserForm.get('name')?.getRawValue(),
+            surname: this.editUserForm.get('surname')?.getRawValue(),
+            email: this.editUserForm.get('email')?.getRawValue(),
+            password: this.editUserForm.get('password')?.getRawValue(),
+            role: this.editUserForm.get('role')?.getRawValue(),
+          },
+          true
+        )
       );
-      console.log(userUpdated);
       if (
         !userUpdated ||
         !this._userService.checkIfUserInterface(userUpdated)
@@ -117,8 +128,8 @@ export class UsersComponent implements OnInit, OnDestroy {
     }
   }
 
-  async delete(element: User) {
-    this._userService.deleteUser(element.id).subscribe({
+  async delete(user: User) {
+    this._userService.deleteUser(user.id, true).subscribe({
       next: (deletedMessage) => {
         console.log(deletedMessage);
       },
@@ -127,8 +138,9 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   filter(event: Event) {
-    const value = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = value.trim().toLocaleLowerCase();
+    this.dataSource.filter = (event.target as HTMLInputElement).value
+      .trim()
+      .toLocaleLowerCase();
   }
 
   cssCreate(): void {
@@ -137,7 +149,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   async setUserEdit(user: User) {
     try {
-      if (user.password === '' && this.identity.role === 'admin') {
+      if (user.password === '' && this.access === 'admin') {
         const user2Check = await lastValueFrom(
           this._userService.getUser(user.id)
         );
@@ -160,10 +172,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     }
   }
 
-  openModal(template: TemplateRef<any>, user: User | null = null) {
-    if (user != null) {
-      this.setUserEdit(user);
-    }
+  openModal(template: TemplateRef<any>) {
     this.modalRef = this.modalService.show(template);
   }
 

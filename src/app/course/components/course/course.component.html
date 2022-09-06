@@ -49,13 +49,7 @@
       </button>
     </form>
   </ng-template>
-  <ng-container
-    *ngIf="
-      identity &&
-      identity.role &&
-      (identity.role === 'admin' || identity.role === 'profesor')
-    "
-  >
+  <ng-container *ngIf="access === 'admin' || access === 'profesor'">
     <ng-container *ngIf="ELEMENT_DATA && ELEMENT_DATA.length > 0">
       <div
         class="bef bef-bg-mystic bef-p-1rem w-100 d-flex justify-content-between"
@@ -153,15 +147,15 @@
     <!--
 
     -->
-    <button
-      (click)="addStudent(identity)"
-      *ngIf="
-        identity && (identity.id || identity.id >= 0) && !hasItStudent(identity)
-      "
-      class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
-    >
-      Inscribirse
-    </button>
+    <ng-container *ngIf="identity$ | async as identity">
+      <button
+        (click)="addStudent(identity)"
+        *ngIf="!hasItStudent(identity)"
+        class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
+      >
+        Inscribirse
+      </button>
+    </ng-container>
     <button
       class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"
       (click)="changeEditOption()"

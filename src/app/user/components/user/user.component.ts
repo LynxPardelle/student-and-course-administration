@@ -9,6 +9,11 @@ import { UserService } from 'src/app/user/services/user.service';
 
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
+import { AuthService } from 'src/app/auth/services/auth.service';
+import { Observable } from 'rxjs';
+import { AppState } from 'src/app/state/app.state';
+import { Store } from '@ngrx/store';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
 @Component({
   selector: 'app-user',
   templateUrl: './user.component.html',
@@ -24,7 +29,8 @@ export class UserComponent implements OnInit {
     password: '',
     role: this.roleOptions[0],
   };
-  public identity: any = null;
+  public identity$!: Observable<User | undefined>;
+  public access: string = 'public';
   public editUserForm: FormGroup;
 
   public columns: string[] = ['title', 'students', 'profesor', 'actions'];
@@ -38,10 +44,12 @@ export class UserComponent implements OnInit {
   public showCourses: boolean = false;
   @ViewChild(MatTable) tabla!: MatTable<Course>;
   constructor(
+    private store: Store<AppState>,
     private _route: ActivatedRoute,
     private _router: Router,
     private fb: FormBuilder,
     private _befService: BefService,
+    private _authService: AuthService,
     private _courseService: CourseService,
     private _userService: UserService
   ) {
@@ -61,14 +69,27 @@ export class UserComponent implements OnInit {
           Validators.minLength(4),
         ],
       ],
-      role: [this.roleOptions[0]],
+      role: [this.roleOptions[0], [Validators.required]],
+    });
+    this.identity$ = this.store.select(IdentitySesionSelector);
+    this.identity$.subscribe({
+      next: (i) => {
+        if (!this._userService.checkIfUserInterface(i)) {
+          this._router.navigate(['/auth/login']);
+        } else {
+          this.access = i.role;
+        }
+      },
+      error: (e) => {
+        console.error(e);
+        this.access = 'public';
+      },
     });
   }
 
   ngOnInit(): void {
-    this.getIdentity();
-    this._route.params.subscribe(
-      (params) => {
+    this._route.params.subscribe({
+      next: (params) => {
         if (params['id']) {
           this._userService.getUser(parseInt(params['id'])).subscribe({
             next: (user) => {
@@ -81,18 +102,14 @@ export class UserComponent implements OnInit {
             },
             error: (error) => console.error(error),
           });
-        } else if (
-          !this.identity ||
-          !this.identity.role ||
-          (this.identity.role !== 'admin' && this.identity.role !== 'profesor')
-        ) {
+        } else if (this.access !== 'admin' && this.access !== 'profesor') {
           this._router.navigate(['auth/login']);
         }
       },
-      (error) => {
+      error: (error) => {
         console.error(error);
-      }
-    );
+      },
+    });
     this._courseService.getCourses().subscribe({
       next: (courses) => {
         this.courses = courses;
@@ -106,17 +123,14 @@ export class UserComponent implements OnInit {
                   : null;
               })
             : [];
-        console.log(studentCourses);
         this.ELEMENT_DATA = studentCourses ? studentCourses : [];
         this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
         this.showCourses = !!this.ELEMENT_DATA[0];
-
-        console.log(this.showCourses);
       },
       error: (error) => console.error(error),
     });
     this._courseService.updateCoursesList();
-    this._befService.cssCreate();
+    this.cssCreate();
   }
 
   setUserForm(clear: boolean = false) {
@@ -148,21 +162,15 @@ export class UserComponent implements OnInit {
     };
     if (this.user.id >= 0) {
       this._userService.updateUser(user).subscribe({
-        next: (user) => userGetter(user),
-        error: (error) => console.error(error),
-      });
-    } else {
-      this._userService.updateUser(user).subscribe({
-        next: (user) => userGetter(user),
+        next: (user) => {
+          this.isEdit = false;
+          this.user = user;
+          this.setUserForm();
+          this._courseService.updateCoursesList();
+        },
         error: (error) => console.error(error),
       });
     }
-    const userGetter = (user: User) => {
-      this.isEdit = false;
-      this.user = user;
-      this.setUserForm();
-      this._courseService.updateCoursesList();
-    };
   }
 
   allCoursesHasIt() {
@@ -180,25 +188,21 @@ export class UserComponent implements OnInit {
   }
 
   addStudent(course: Course): void {
-    let student = this.user;
-    let students = course.students;
-    if (!this.hasItStudent(student, course)) {
-      students.push(student);
+    if (!this.hasItStudent(this.user, course)) {
+      course.students.push(this.user);
       this.editCourse(course);
     }
   }
 
   removeStudent(course: Course): void {
-    let student = this.user;
-    let students = course.students;
     let i: number = -1;
-    for (let student2check of students) {
-      if (student2check.id === student.id) {
-        i = students.indexOf(student2check);
+    for (let student2check of course.students) {
+      if (student2check.id === this.user.id) {
+        i = course.students.indexOf(student2check);
       }
     }
     if (i !== -1) {
-      students.splice(i, 1);
+      course.students.splice(i, 1);
       this.editCourse(course);
     }
   }
@@ -212,20 +216,9 @@ export class UserComponent implements OnInit {
     });
   }
 
-  getIdentity() {
-    let identity = this._userService.getIdentity();
-    if (identity !== null) {
-      this.identity = identity;
-    } else {
-      this._router.navigate(['/auth/login']);
-    }
-  }
-
   changeEditOption() {
     this.isEdit =
-      this.identity &&
-      this.identity.role &&
-      (this.identity.role === 'admin' || this.identity.role === 'profesor')
+      this.access === 'admin' || this.access === 'profesor'
         ? !this.isEdit
         : false;
   }
