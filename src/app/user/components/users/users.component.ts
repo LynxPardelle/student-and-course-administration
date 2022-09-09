@@ -161,6 +161,7 @@ export class UsersComponent implements OnInit, OnDestroy {
       ) {
         throw new Error('Usuario no actualizado.');
       }
+      this.users$ = this.usersStore.select(LoadedUsersSelector);
       this.modalRef?.hide();
       this.clearForm();
     } catch (error) {

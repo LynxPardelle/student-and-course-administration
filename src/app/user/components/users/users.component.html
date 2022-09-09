@@ -63,7 +63,7 @@
 </ng-container>
 <a
   class="d-block btn bef bef-btnOutline-mystic my-3 mx-auto bef-textHover-lavender bef-w-12rem"
-  href="/register"
+  href="/auth/register"
   [routerLink]="['/register']"
   data-bs-dismiss="offcanvas"
   aria-label="Close"
@@ -110,6 +110,24 @@
           (ngInit)="cssCreate()"
         >
           (El nombre no puede quedar vacío)
+        </p>
+      </div>
+      <!-- Name -->
+      <div class="my-3">
+        <label class="h4">Apellido</label>
+        <input
+          class="form-control bg-transparent"
+          type="text"
+          formControlName="surname"
+          required
+        />
+        <p
+          class="bef bef-text-blood fw-bold"
+          *ngIf="editUserForm.get('surname')?.touched && editUserForm.get('surname')?.errors?.['required']"
+          [exist]="editUserForm.get('surname')?.errors?.['required']"
+          (ngInit)="cssCreate()"
+        >
+          (El apellido no puede quedar vacío)
         </p>
       </div>
       <!-- Email -->
