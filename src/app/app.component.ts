@@ -1,24 +1,31 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
+import { Location } from '@angular/common';
+
+/* RxJs */
+import { Observable } from 'rxjs';
+
+/* Models */
+import { User } from './user/models/user';
 
 /* Services */
 import { UserService } from 'src/app/user/services/user.service';
+
+/* Store */
+import { Store } from '@ngrx/store';
+import { AppState } from './state/app.state';
+import { IdentitySesionSelector } from './state/selectors/sesion.selector';
+
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
-import { AuthService } from './auth/services/auth.service';
-import { AppState } from './state/app.state';
-import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
-import { User } from './user/models/user';
-import { IdentitySesionSelector } from './state/selectors/sesion.selector';
-import { Location } from '@angular/common';
+import { CloseSesion, LoadSesion } from './state/actions/sesion.actions';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent implements OnInit {
-  public identity$!: Observable<User | undefined>;
+  public identity$: Observable<User | undefined>;
   public access: string = 'public';
   public ComponentRoot: string = 'AppComponent';
 
@@ -26,17 +33,15 @@ export class AppComponent implements OnInit {
   constructor(
     private store: Store<AppState>,
     private _router: Router,
-    private _route: ActivatedRoute,
     private _location: Location,
     private _befService: BefService,
-    private _authService: AuthService,
     private _userService: UserService
   ) {
-    this._authService.checkForSesion();
+    this.identity$ = this.store.select(IdentitySesionSelector);
   }
 
   ngOnInit(): void {
-    this.identity$ = this.store.select(IdentitySesionSelector);
+    this.store.dispatch(LoadSesion());
     this.identity$.subscribe({
       next: (i) => {
         if (!this._userService.checkIfUserInterface(i)) {
@@ -55,16 +60,15 @@ export class AppComponent implements OnInit {
       },
       complete: () => console.info('identity$ completed'),
     });
-    this._route.url.subscribe({
-      next: (f) => {
-        console.log(f);
-      },
-    });
     this.cssCreate();
   }
 
   onActivate(event: any) {
-    this.ComponentRoot = event._route.component.name;
+    if (event._route?.component?.name) {
+      this.ComponentRoot = event._route.component.name;
+    } else {
+      this.ComponentRoot = 'AppComponent';
+    }
   }
 
   onDeactivate(event: any) {
@@ -76,6 +80,7 @@ export class AppComponent implements OnInit {
   }
 
   logOut(): void {
-    this._authService.logOut();
+    this.store.dispatch(CloseSesion());
+    this._router.navigate(['/auth/login']);
   }
 }

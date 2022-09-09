@@ -2,13 +2,14 @@ import { HttpClientModule } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
+import { CourseComponent } from './course.component';
+
+/* Store */
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import {
-  loadedCoursesSelector,
-  loadingCoursesSelector,
-} from 'src/app/state/selectors/course.selector';
-
-import { CourseComponent } from './course.component';
+  LoadedCoursesSelector,
+  LoadingCoursesSelector,
+} from '../../state/course.selectors';
 
 describe('CourseComponent', () => {
   let component: CourseComponent;
@@ -25,11 +26,11 @@ describe('CourseComponent', () => {
           initialState,
           selectors: [
             {
-              selector: loadingCoursesSelector,
+              selector: LoadingCoursesSelector,
               value: false,
             },
             {
-              selector: loadedCoursesSelector,
+              selector: LoadedCoursesSelector,
               value: [],
             },
           ],

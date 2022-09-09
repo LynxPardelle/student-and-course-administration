@@ -1,9 +1,10 @@
-import { Component, DebugElement, ElementRef } from '@angular/core';
+import { Component, DebugElement } from '@angular/core';
 import { Titles20Directive } from './titles20.directive';
-/* Bef */
-import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+
+/* Bef */
+import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
 
 @Component({ template: `<h1 appTitles20>Some Title</h1>` })
 class TestTitles20Component {}

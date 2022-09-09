@@ -1,19 +1,35 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { Validators, FormBuilder, FormGroup } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+
+/* RxJs */
+import { firstValueFrom, Observable } from 'rxjs';
+
+/* Models */
 import { User } from 'src/app/user/models/user';
-import { MatTable, MatTableDataSource } from '@angular/material/table';
 import { Course } from 'src/app/course/models/course';
-import { CourseService } from 'src/app/course/services/course.service';
+
+/* Services */
 import { UserService } from 'src/app/user/services/user.service';
+import { CourseService } from 'src/app/course/services/course.service';
+
+/* Store */
+import { Store } from '@ngrx/store';
+import { AppState } from 'src/app/state/app.state';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
 
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
-import { AuthService } from 'src/app/auth/services/auth.service';
-import { Observable } from 'rxjs';
-import { AppState } from 'src/app/state/app.state';
-import { Store } from '@ngrx/store';
-import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
+
+/* Material */
+import { MatTable, MatTableDataSource } from '@angular/material/table';
+import { CoursesState } from 'src/app/course/interfaces/courses.state';
+import { LoadedCoursesSelector } from 'src/app/course/state/course.selectors';
+import {
+  CoursesLoaded,
+  LoadCourses,
+} from 'src/app/course/state/course.actions';
+import { LoadSesion } from 'src/app/state/actions/sesion.actions';
 @Component({
   selector: 'app-user',
   templateUrl: './user.component.html',
@@ -39,22 +55,22 @@ export class UserComponent implements OnInit {
     this.ELEMENT_DATA
   );
 
-  public courses: Course[] = [];
+  public courses$: Observable<Course[]>;
   public isEdit: boolean = true;
   public showCourses: boolean = false;
   @ViewChild(MatTable) tabla!: MatTable<Course>;
   constructor(
     private store: Store<AppState>,
+    private coursesStore: Store<CoursesState>,
     private _route: ActivatedRoute,
     private _router: Router,
     private fb: FormBuilder,
     private _befService: BefService,
-    private _authService: AuthService,
     private _courseService: CourseService,
     private _userService: UserService
   ) {
     this.editUserForm = this.fb.group({
-      id: ['', [Validators.required]],
+      id: [0, [Validators.required]],
       name: ['', [Validators.required]],
       surname: ['', [Validators.required]],
       email: [
@@ -72,19 +88,7 @@ export class UserComponent implements OnInit {
       role: [this.roleOptions[0], [Validators.required]],
     });
     this.identity$ = this.store.select(IdentitySesionSelector);
-    this.identity$.subscribe({
-      next: (i) => {
-        if (!this._userService.checkIfUserInterface(i)) {
-          this._router.navigate(['/auth/login']);
-        } else {
-          this.access = i.role;
-        }
-      },
-      error: (e) => {
-        console.error(e);
-        this.access = 'public';
-      },
-    });
+    this.courses$ = this.coursesStore.select(LoadedCoursesSelector);
   }
 
   ngOnInit(): void {
@@ -96,7 +100,6 @@ export class UserComponent implements OnInit {
               this.isEdit = false;
               this.user = user;
               this.setUserForm();
-              this._courseService.updateCoursesList();
               /*
                */
             },
@@ -110,9 +113,21 @@ export class UserComponent implements OnInit {
         console.error(error);
       },
     });
-    this._courseService.getCourses().subscribe({
+    this.identity$.subscribe({
+      next: (i) => {
+        if (!this._userService.checkIfUserInterface(i)) {
+          this._router.navigate(['/auth/login']);
+        } else {
+          this.access = i.role;
+        }
+      },
+      error: (e) => {
+        console.error(e);
+        this.access = 'public';
+      },
+    });
+    this.courses$.subscribe({
       next: (courses) => {
-        this.courses = courses;
         let studentCourses =
           this.user.id >= 0
             ? courses.filter((course: Course) => {
@@ -129,7 +144,7 @@ export class UserComponent implements OnInit {
       },
       error: (error) => console.error(error),
     });
-    this._courseService.updateCoursesList();
+    this.coursesStore.dispatch(LoadCourses());
     this.cssCreate();
   }
 
@@ -151,33 +166,33 @@ export class UserComponent implements OnInit {
     }
   }
 
-  submit() {
-    let user = {
-      id: this.editUserForm.get('id')?.getRawValue(),
-      name: this.editUserForm.get('name')?.getRawValue(),
-      surname: this.editUserForm.get('surname')?.getRawValue(),
-      email: this.editUserForm.get('email')?.getRawValue(),
-      password: this.editUserForm.get('password')?.getRawValue(),
-      role: this.editUserForm.get('role')?.getRawValue(),
-    };
-    if (this.user.id >= 0) {
-      this._userService.updateUser(user).subscribe({
-        next: (user) => {
-          this.isEdit = false;
-          this.user = user;
-          this.setUserForm();
-          this._courseService.updateCoursesList();
-        },
-        error: (error) => console.error(error),
+  async submit() {
+    try {
+      let u = await this._userService.updateUser({
+        id: this.editUserForm.get('id')?.getRawValue(),
+        name: this.editUserForm.get('name')?.getRawValue(),
+        surname: this.editUserForm.get('surname')?.getRawValue(),
+        email: this.editUserForm.get('email')?.getRawValue(),
+        password: this.editUserForm.get('password')?.getRawValue(),
+        role: this.editUserForm.get('role')?.getRawValue(),
       });
+      if (!u && !this._userService.checkIfUserInterface(u)) {
+        throw new Error('No se pudo actualizar el usuario.');
+      }
+      this.isEdit = false;
+      this.user = u;
+      this.setUserForm();
+      this.coursesStore.dispatch(LoadCourses());
+    } catch (err) {
+      console.error(err);
     }
   }
 
-  allCoursesHasIt() {
+  allCoursesHasIt(courses: Course[]) {
     return (
-      this.courses.filter((c) => {
+      courses.filter((c: Course) => {
         return this.hasItStudent(this.user, c);
-      }).length === this.courses.length
+      }).length === courses.length
     );
   }
 
@@ -189,8 +204,12 @@ export class UserComponent implements OnInit {
 
   addStudent(course: Course): void {
     if (!this.hasItStudent(this.user, course)) {
-      course.students.push(this.user);
-      this.editCourse(course);
+      this.editCourse({
+        id: course.id,
+        title: course.title,
+        students: [...course.students, this.user],
+        profesor: course.profesor,
+      });
     }
   }
 
@@ -202,15 +221,21 @@ export class UserComponent implements OnInit {
       }
     }
     if (i !== -1) {
-      course.students.splice(i, 1);
-      this.editCourse(course);
+      let nS = [...course.students];
+      nS.splice(i, 1);
+      this.editCourse({
+        id: course.id,
+        title: course.title,
+        students: nS,
+        profesor: course.profesor,
+      });
     }
   }
 
   editCourse(course: Course) {
     this._courseService.updateCourse(course).subscribe({
       next: (course) => {
-        this._courseService.updateCoursesList();
+        this.coursesStore.dispatch(LoadCourses());
       },
       error: (error) => console.error(error),
     });

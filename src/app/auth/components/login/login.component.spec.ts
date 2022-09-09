@@ -2,14 +2,14 @@ import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
-import { Store } from '@ngrx/store';
+import { LoginComponent } from './login.component';
+
+/* Store */
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import {
-  ActiveSesionSelector,
+  SesionLoadedSelector,
   IdentitySesionSelector,
 } from 'src/app/state/selectors/sesion.selector';
-
-import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
@@ -30,7 +30,7 @@ describe('LoginComponent', () => {
           initialState,
           selectors: [
             {
-              selector: ActiveSesionSelector,
+              selector: SesionLoadedSelector,
               value: false,
             },
             {

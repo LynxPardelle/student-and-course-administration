@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
-
 import { AuthGuard } from './auth.guard';
+
+/* Store */
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import {
-  ActiveSesionSelector,
+  SesionLoadedSelector,
   IdentitySesionSelector,
 } from 'src/app/state/selectors/sesion.selector';
 
@@ -21,7 +22,7 @@ describe('AuthGuard', () => {
           initialState,
           selectors: [
             {
-              selector: ActiveSesionSelector,
+              selector: SesionLoadedSelector,
               value: false,
             },
             {

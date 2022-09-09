@@ -1,4 +1,5 @@
-<h2 appTitles20>home works!</h2>
 <ng-container *ngIf="identity$ | async as identity">
-  <p>Te damos la bienvenida {{ identity | nameParser }}. 😊</p>
+  <h2 appTitles20 class="text-center">
+    ¡Te damos la bienvenida {{ identity | nameParser }}! 😊
+  </h2>
 </ng-container>

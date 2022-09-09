@@ -11,9 +11,24 @@ import { CourseComponent } from 'src/app/course/components/course/course.compone
 
 /* Services */
 import { CourseService } from 'src/app/course/services/course.service';
+
+/* Store */
+import { StoreModule } from '@ngrx/store';
+import * as fromCourse from './state/course.reducer';
+import { EffectsModule } from '@ngrx/effects';
+import { CourseEffects } from './state/course.effects';
 @NgModule({
   declarations: [CoursesComponent, CourseComponent],
-  imports: [CommonModule, CourseRoutingModule, SharedModule],
+  imports: [
+    CommonModule,
+    CourseRoutingModule,
+    SharedModule,
+    StoreModule.forFeature(
+      fromCourse.courseFeatureKey,
+      fromCourse.CourseReducer
+    ),
+    EffectsModule.forFeature([CourseEffects]),
+  ],
   providers: [CourseService],
 })
 export class CourseModule {}

@@ -1,86 +1,57 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Course } from 'src/app/course/models/course';
+
+/* RxJs */
+import { firstValueFrom, lastValueFrom, map, Observable, Subject } from 'rxjs';
+
+/* Environment */
+import { environment } from 'src/environments/environment';
+
+/* Interfaces */
 import CourseInterface from 'src/app/course/interfaces/course';
-import { UserService } from 'src/app/user/services/user.service';
-import Enviroment from 'src/app/environments/enviroment';
-import { User } from 'src/app/user/models/user';
+
+/* Models */
+import { Course } from 'src/app/course/models/course';
+import { Store } from '@ngrx/store';
+import { CoursesState } from '../interfaces/courses.state';
+import { LoadedCoursesSelector } from '../state/course.selectors';
+
+/* Store */
 @Injectable({
   providedIn: 'root',
 })
 export class CourseService {
-  public courses: Course[] = [];
-  public coursesSubject: Subject<any> = new Subject();
-  public identity: any;
-  private readonly api = Enviroment.api;
+  public courses$: Observable<Course[]>;
+  private readonly api = environment.api;
 
-  constructor(private _userService: UserService, private _http: HttpClient) {}
+  constructor(
+    private _http: HttpClient,
+    private coursesStore: Store<CoursesState>
+  ) {
+    this.courses$ = this.coursesStore.select(LoadedCoursesSelector);
+  }
 
   // Create
-  createCourse(course: Course): Observable<Course> {
-    try {
-      if (this.checkIfCourseInterface(course)) {
-        course.id = this.courses.length;
-        while (
-          this.courses.find((courseO) => {
-            return typeof courseO.id === 'string'
-              ? parseInt(courseO.id) === course.id
-              : courseO.id === course.id;
+  async createCourse(course: Course): Promise<Course> {
+    while (
+      await firstValueFrom(
+        this.courses$.pipe(
+          map((courses: Course[]) => {
+            return courses.find((c) => c.id === course.id);
           })
-        ) {
-          course.id++;
-        }
-        this.updateCoursesList();
-        return this._http.post<Course>(`${this.api}/Course/`, course);
-      } else {
-        throw new Error('Not a valid course.');
-      }
-    } catch (err) {
-      console.error(err);
-      return new Observable<any>((suscriptor) => {
-        suscriptor.error(err);
-      });
+        )
+      )
+    ) {
+      course.id++;
     }
+    return lastValueFrom(
+      this._http.post<Course>(`${this.api}/Course/`, course)
+    );
   }
 
   // Read
   getCourses(): Observable<Course[]> {
-    return this.coursesSubject.asObservable();
-  }
-
-  updateCoursesList(): void {
-    this._http
-      .get<Course[]>(`${this.api}/Course`, {
-        headers: new HttpHeaders({
-          'content-type': 'application/json',
-          encoding: 'UTF-8',
-        }),
-      })
-      .subscribe({
-        next: (courses) => {
-          this.courses = courses.map((course) => {
-            if (typeof course.id === 'string') {
-              course.id = parseInt(course.id);
-            }
-            return course;
-          });
-          this.coursesSubject.next(this.courses);
-        },
-        error: (err) => {
-          this.courses = [];
-          console.error(err);
-          this.coursesSubject.next(this.courses);
-          this.coursesSubject.error('Error.');
-        },
-      });
-  }
-
-  getCourse(id: number | string): Observable<Course> {
-    if (typeof id === 'number') {
-      id.toString();
-    }
-    return this._http.get<Course>(`${this.api}/Course/${id}`, {
+    return this._http.get<Course[]>(`${this.api}/Course`, {
       headers: new HttpHeaders({
         'content-type': 'application/json',
         encoding: 'UTF-8',
@@ -88,53 +59,47 @@ export class CourseService {
     });
   }
 
+  getCourse(id: number | string): Observable<Course> {
+    return this._http
+      .get<Course>(`${this.api}/Course/${id}`, {
+        headers: new HttpHeaders({
+          'content-type': 'application/json',
+          encoding: 'UTF-8',
+        }),
+      })
+      .pipe(
+        map((c: Course) => {
+          if (typeof c.id === 'string') {
+            c.id = parseInt(c.id);
+          }
+          for (let s of c.students) {
+            s.password = '';
+          }
+          if (c.profesor && c.profesor.password) {
+            c.profesor.password = '';
+          }
+          return c;
+        })
+      );
+  }
+
   // Update
   updateCourse(course: Course): Observable<Course> {
-    let courseSubject: Subject<any> = new Subject();
-    this._http
-      .put<Course>(`${this.api}/Course/${course.id.toString()}`, course)
-      .subscribe({
-        next: (course) => {
-          this.updateCoursesList();
-          courseSubject.next(course);
-        },
-        error: (err) => {
-          this.updateCoursesList();
-          console.error(err);
-          courseSubject.error(err);
-        },
-        complete: () => {
-          this.updateCoursesList();
-          courseSubject.complete();
-        },
-      });
-    return courseSubject.asObservable();
+    return this._http.put<Course>(
+      `${this.api}/Course/${course.id.toString()}`,
+      course
+    );
   }
 
   // Delete
   deleteCourse(id: number) {
-    let courseSubject: Subject<any> = new Subject();
-    this._http.delete<Course>(`${this.api}/Course/${id.toString()}`).subscribe({
-      next: () => {
-        this.updateCoursesList();
-        courseSubject.next('Course deleted.');
-      },
-      error: (err) => {
-        this.updateCoursesList();
-        console.error(err);
-        courseSubject.error(err);
-      },
-      complete: () => {
-        this.updateCoursesList();
-        courseSubject.complete();
-      },
-    });
-    return courseSubject.asObservable();
+    return this._http.delete<Course>(`${this.api}/Course/${id.toString()}`);
   }
 
   // Utility
   checkIfCourseInterface(course: any): course is CourseInterface {
     return (
+      <CourseInterface>course !== undefined &&
       (<CourseInterface>course).id !== undefined &&
       (<CourseInterface>course).title !== undefined &&
       (<CourseInterface>course).students !== undefined &&

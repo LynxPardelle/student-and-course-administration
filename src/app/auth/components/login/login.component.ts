@@ -1,20 +1,33 @@
 import { Component, OnInit } from '@angular/core';
 import { Validators, FormBuilder } from '@angular/forms';
-import { Router, RouterModule, ActivatedRoute, Params } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
+
+/* RxJs */
 import { lastValueFrom, Observable } from 'rxjs';
 
+/* Models */
+import { User } from 'src/app/user/models/user';
+
+/* Services */
 import { UserService } from 'src/app/user/services/user.service';
+
+/* Store */
+import { Store } from '@ngrx/store';
+import { AppState } from 'src/app/state/app.state';
+import { UsersState } from 'src/app/user/interfaces/users.state';
+import { LoadSesion } from 'src/app/state/actions/sesion.actions';
+import { LoadUsers } from 'src/app/user/state/user.actions';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
+
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
-import { AuthService } from 'src/app/auth/services/auth.service';
-import { User } from 'src/app/user/models/user';
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
 })
 export class LoginComponent implements OnInit {
-  public identity$!: Observable<User | undefined>;
+  public identity$: Observable<User | undefined>;
   public debugMessage!: string;
   public isRegister: boolean = false;
 
@@ -35,75 +48,69 @@ export class LoginComponent implements OnInit {
   });
 
   constructor(
+    private store: Store<AppState>,
+    private usersStore: Store<UsersState>,
     private _route: ActivatedRoute,
     private _router: Router,
     private fb: FormBuilder,
     private _befService: BefService,
-    private _authService: AuthService,
     private _userService: UserService
-  ) {}
+  ) {
+    this.identity$ = this.store.select(IdentitySesionSelector);
+  }
 
   ngOnInit(): void {
-    if (
-      this._route.snapshot.routeConfig &&
-      this._route.snapshot.routeConfig.path &&
-      this._route.snapshot.routeConfig.path === 'register'
-    ) {
+    if (this._route.snapshot?.routeConfig?.path === 'register') {
       this.isRegister = true;
       this.loginForm.get('name')?.addValidators([Validators.required]);
       this.loginForm.get('surname')?.addValidators([Validators.required]);
       this.loginForm.get('role')?.addValidators([Validators.required]);
     }
-    this._befService.cssCreate();
+    this.cssCreate();
   }
 
   async submit() {
     if (this.loginForm.valid) {
       this.debugMessage = 'Enviando los datos...';
       if (!this.isRegister) {
-        await setTimeout(async () => {
-          try {
-            const identity = await lastValueFrom(
-              this._userService.login(
-                this.loginForm.get('email')?.getRawValue(),
-                this.loginForm.get('password')?.getRawValue()
-              )
-            );
-            if (
-              !identity ||
-              !this._userService.checkIfUserInterface(identity)
-            ) {
-              throw new Error('There is no user');
-            }
-            localStorage.setItem('identitySACA', JSON.stringify(identity));
-
-            this.debugMessage = `Te damos la bienvenida ${identity.name}. 😊`;
-
-            setTimeout(() => {
-              this._router.navigate(['/home']);
-            }, 1000);
-          } catch (error) {
-            this.debugMessage =
-              'Error, no se encontró el usuario o la contraseña esta mal escrita.';
-            console.log(error);
-          }
-        }, 1000);
+        this._userService
+          .login(
+            this.loginForm.get('email')?.getRawValue(),
+            this.loginForm.get('password')?.getRawValue()
+          )
+          .subscribe({
+            next: (i) => {
+              if (!this._userService.checkIfUserInterface(i)) {
+                throw new Error('No hay usuario.');
+              }
+              localStorage.setItem('identitySACA', i.id.toString());
+              this.store.dispatch(LoadSesion());
+              this.debugMessage = `Te damos la bienvenida ${i.name}. 😊`;
+              setTimeout(() => {
+                this._router.navigate(['/home']);
+              }, 1000);
+            },
+            error: (e) => {
+              this.debugMessage =
+                'Error, no se encontró el usuario o la contraseña esta mal escrita.';
+              console.log(e);
+            },
+          });
       } else {
         await setTimeout(async () => {
           try {
-            let newUser = await lastValueFrom(
-              this._userService.register({
-                id: 0,
-                name: this.loginForm.get('name')?.getRawValue(),
-                surname: this.loginForm.get('surname')?.getRawValue(),
-                email: this.loginForm.get('email')?.getRawValue(),
-                password: this.loginForm.get('password')?.getRawValue(),
-                role: this.loginForm.get('role')?.getRawValue(),
-              })
-            );
+            let newUser = await this._userService.register({
+              id: 0,
+              name: this.loginForm.get('name')?.getRawValue(),
+              surname: this.loginForm.get('surname')?.getRawValue(),
+              email: this.loginForm.get('email')?.getRawValue(),
+              password: this.loginForm.get('password')?.getRawValue(),
+              role: this.loginForm.get('role')?.getRawValue(),
+            });
+            this.usersStore.dispatch(LoadUsers());
             console.log(newUser);
             if (!newUser || !this._userService.checkIfUserInterface(newUser)) {
-              throw new Error('User not registered.');
+              throw new Error('Usuario Registrado.');
             }
             this.debugMessage = 'Usuario Registrado.';
           } catch (error) {
@@ -112,10 +119,10 @@ export class LoginComponent implements OnInit {
           }
         }, 1000);
       }
-      this._befService.cssCreate();
+      this.cssCreate();
     } else {
       this.debugMessage = 'Hay datos inválidos en el formulario.';
-      this._befService.cssCreate();
+      this.cssCreate();
     }
   }
 

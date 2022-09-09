@@ -9,8 +9,20 @@ import { SharedModule } from 'src/app/shared/shared.module';
 import { UserComponent } from 'src/app/user/components/user/user.component';
 import { UsersComponent } from 'src/app/user/components/users/users.component';
 
+/* Store */
+import { StoreModule } from '@ngrx/store';
+import { EffectsModule } from '@ngrx/effects';
+import * as fromUser from './state/user.reducer';
+import { UserEffects } from './state/user.effects';
+
 @NgModule({
   declarations: [UserComponent, UsersComponent],
-  imports: [CommonModule, UserRoutingModule, SharedModule],
+  imports: [
+    CommonModule,
+    UserRoutingModule,
+    SharedModule,
+    StoreModule.forFeature(fromUser.userFeatureKey, fromUser.UserReducer),
+    EffectsModule.forFeature([UserEffects]),
+  ],
 })
 export class UserModule {}

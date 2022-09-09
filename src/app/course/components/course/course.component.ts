@@ -1,19 +1,33 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { Course } from 'src/app/course/models/course';
-import { CourseService } from 'src/app/course/services/course.service';
 import { Router, ActivatedRoute } from '@angular/router';
-import { MatTable, MatTableDataSource } from '@angular/material/table';
-import { UserService } from 'src/app/user/services/user.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+
+/* RxJs */
+import { Observable } from 'rxjs';
+
+/* Models */
+import { Course } from 'src/app/course/models/course';
 import { User } from 'src/app/user/models/user';
+
+/* Services */
+import { CourseService } from 'src/app/course/services/course.service';
+import { UserService } from 'src/app/user/services/user.service';
+
+/* Store */
+import { Store } from '@ngrx/store';
+import { AppState } from 'src/app/state/app.state';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
 
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
-import { AuthService } from 'src/app/auth/services/auth.service';
-import { Observable } from 'rxjs';
-import { AppState } from 'src/app/state/app.state';
-import { Store } from '@ngrx/store';
-import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
+
+/* Material */
+import { MatTable, MatTableDataSource } from '@angular/material/table';
+import { LoadSesion } from 'src/app/state/actions/sesion.actions';
+import { UsersState } from 'src/app/user/interfaces/users.state';
+import { LoadedUsersSelector } from 'src/app/user/state/user.selectors';
+import { LoadUsers } from 'src/app/user/state/user.actions';
+
 @Component({
   selector: 'app-course',
   templateUrl: './course.component.html',
@@ -26,7 +40,7 @@ export class CourseComponent implements OnInit {
     students: [],
     profesor: null,
   };
-  public identity$!: Observable<User | undefined>;
+  public identity$: Observable<User | undefined>;
   public access: string = 'public';
   public editCourseForm: FormGroup;
 
@@ -37,7 +51,7 @@ export class CourseComponent implements OnInit {
   );
   public showStudents: boolean = false;
 
-  public users: User[] = [];
+  public users$: Observable<User[]>;
   public isEdit: boolean = true;
   @ViewChild(MatTable) tabla!: MatTable<Course>;
   constructor(
@@ -47,10 +61,9 @@ export class CourseComponent implements OnInit {
     private _router: Router,
 
     private _befService: BefService,
-
-    private _authService: AuthService,
     private _courseService: CourseService,
-    private _userService: UserService
+    private _userService: UserService,
+    private usersStore: Store<UsersState>
   ) {
     this.editCourseForm = this.fb.group({
       id: [-1, [Validators.required]],
@@ -60,10 +73,11 @@ export class CourseComponent implements OnInit {
       user2Add: [null],
       user2Remove: [null],
     });
+    this.identity$ = this.store.select(IdentitySesionSelector);
+    this.users$ = this.usersStore.select(LoadedUsersSelector);
   }
 
   ngOnInit(): void {
-    this.identity$ = this.store.select(IdentitySesionSelector);
     this.identity$.subscribe({
       next: (i) => {
         if (!this._userService.checkIfUserInterface(i)) {
@@ -78,8 +92,8 @@ export class CourseComponent implements OnInit {
       },
       complete: () => (this.access = 'public'),
     });
-    this._route.params.subscribe(
-      (params) => {
+    this._route.params.subscribe({
+      next: (params) => {
         if (params['id']) {
           this._courseService.getCourse(parseInt(params['id'])).subscribe({
             next: (course) => {
@@ -98,15 +112,12 @@ export class CourseComponent implements OnInit {
           this._router.navigate(['login']);
         }
       },
-      (error) => {
+      error: (error) => {
         console.error(error);
-      }
-    );
+      },
+    });
     if (this.access === 'admin') {
-      this._userService.getUsers().subscribe({
-        next: (users) => (this.users = users),
-        error: (error) => console.error(error),
-      });
+      this.usersStore.dispatch(LoadUsers());
     }
   }
 
@@ -124,41 +135,46 @@ export class CourseComponent implements OnInit {
     }
   }
 
-  submit() {
-    let course = {
-      id: this.editCourseForm.get('id')?.getRawValue(),
-      title: this.editCourseForm.get('title')?.getRawValue(),
-      students: this.editCourseForm.get('students')?.getRawValue(),
-      profesor: this.editCourseForm.get('profesor')?.getRawValue(),
-    };
-    if (this.course.id >= 0) {
-      this._courseService.updateCourse(course).subscribe({
-        next: (course) => {
-          this.isEdit = false;
-          this.course = course;
-          this.setCourseForm();
-          if (this.course.students[0]) {
-            this.ELEMENT_DATA = this.course.students;
-            this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
-            this.showStudents = !!this.ELEMENT_DATA[0];
-          }
-        },
-        error: (error) => console.error(error),
-      });
-    } else {
-      this._courseService.createCourse(course).subscribe({
-        next: (course) => {
-          this.isEdit = false;
-          this.course = course;
-          this.setCourseForm();
-          if (this.course.students[0]) {
-            this.ELEMENT_DATA = this.course.students;
-            this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
-            this.showStudents = !!this.ELEMENT_DATA[0];
-          }
-        },
-        error: (error) => console.error(error),
-      });
+  async submit() {
+    try {
+      let course: Course = {
+        id: this.editCourseForm.get('id')?.getRawValue(),
+        title: this.editCourseForm.get('title')?.getRawValue(),
+        students: this.editCourseForm.get('students')?.getRawValue(),
+        profesor: this.editCourseForm.get('profesor')?.getRawValue(),
+      };
+      if (this.course.id >= 0) {
+        this._courseService.updateCourse(course).subscribe({
+          next: (course) => {
+            this.isEdit = false;
+            this.course = course;
+            this.setCourseForm();
+            if (this.course.students[0]) {
+              this.ELEMENT_DATA = this.course.students;
+              this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
+              this.showStudents = !!this.ELEMENT_DATA[0];
+            }
+          },
+          error: (error) => {
+            throw new Error(error);
+          },
+        });
+      } else {
+        let c = await this._courseService.createCourse(course);
+        if (!c && !this._courseService.checkIfCourseInterface(c)) {
+          throw new Error('Curso no actualizado.');
+        }
+        this.isEdit = false;
+        this.course = c;
+        this.setCourseForm();
+        if (this.course.students[0]) {
+          this.ELEMENT_DATA = this.course.students;
+          this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
+          this.showStudents = !!this.ELEMENT_DATA[0];
+        }
+      }
+    } catch (err) {
+      console.error(err);
     }
   }
 

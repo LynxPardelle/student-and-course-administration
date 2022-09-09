@@ -1,32 +1,62 @@
+import { Component } from '@angular/core';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
+import { UserComponent } from './user.component';
+
+/* RxJs */
 import { of } from 'rxjs';
-import { LoginComponent } from 'src/app/auth/components/login/login.component';
+
+/* Models */
+import { User } from 'src/app/user/models/user';
 import { Course } from 'src/app/course/models/course';
+
+/* Services */
+import { UserService } from 'src/app/user/services/user.service';
 import { CourseService } from 'src/app/course/services/course.service';
+
+/* Pipes */
 import { NameParserPipe } from 'src/app/shared/pipes/name-parser.pipe';
+
+/* Store */
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import {
-  ActiveSesionSelector,
+  SesionLoadedSelector,
   IdentitySesionSelector,
 } from 'src/app/state/selectors/sesion.selector';
 import {
   LoadedUsersSelector,
   LoadingUsersSelector,
-} from 'src/app/state/selectors/user.selector';
-import { User } from 'src/app/user/models/user';
-import { UserService } from 'src/app/user/services/user.service';
+} from '../../state/user.selectors';
+import { UsersState } from '../../interfaces/users.state';
+import { CoursesState } from 'src/app/course/interfaces/courses.state';
+import {
+  LoadedCoursesSelector,
+  LoadingCoursesSelector,
+} from 'src/app/course/state/course.selectors';
 
-import { UserComponent } from './user.component';
+@Component({ template: `<h1>Some Title</h1>` })
+class TestLoginComponent {}
 
 describe('UserComponent', () => {
   let component: UserComponent;
   let userService: UserService;
   let courseService: CourseService;
   let fixture: ComponentFixture<UserComponent>;
+  let storeSpy: {
+    select: jasmine.Spy;
+    dispatch: jasmine.Spy;
+  };
+  let userStoreSpy: {
+    select: jasmine.Spy;
+    dispatch: jasmine.Spy;
+  };
+  let courseStoreSpy: {
+    select: jasmine.Spy;
+    dispatch: jasmine.Spy;
+  };
   //let route: ;
   const mockDataUsers: User[] = [
     {
@@ -105,6 +135,14 @@ describe('UserComponent', () => {
           password: '7mCykyanxtC6Yny',
           role: 'profesor',
           id: 3,
+        },
+        {
+          id: 0,
+          name: 'admin',
+          surname: 'admin',
+          email: 'admin@example.com',
+          password: 'password',
+          role: 'admin',
         },
       ],
       profesor: {
@@ -192,15 +230,18 @@ describe('UserComponent', () => {
   let roleForm: any;
 
   let store: MockStore;
+  let userStore: MockStore<UsersState>;
+  let courseStore: MockStore<CoursesState>;
   const initialState = {
     users: { loading: false, users: [] },
+    courses: { loading: false, courses: [] },
     sesion: { active: false },
   };
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
         RouterTestingModule.withRoutes([
-          { path: 'auth/login', component: LoginComponent },
+          { path: 'auth/login', component: TestLoginComponent },
         ]),
         HttpClientTestingModule,
         ReactiveFormsModule,
@@ -219,12 +260,20 @@ describe('UserComponent', () => {
               value: mockDataUsers,
             },
             {
-              selector: ActiveSesionSelector,
+              selector: SesionLoadedSelector,
               value: false,
             },
             {
               selector: IdentitySesionSelector,
               value: undefined,
+            },
+            {
+              selector: LoadingCoursesSelector,
+              value: false,
+            },
+            {
+              selector: LoadedCoursesSelector,
+              value: mockDataCourses,
             },
           ],
         }),
@@ -238,6 +287,24 @@ describe('UserComponent', () => {
         CourseService,
       ],
     }).compileComponents();
+    storeSpy = jasmine.createSpyObj('Store<UsersState>', [
+      'select',
+      'dispatch',
+    ]);
+    userStoreSpy = jasmine.createSpyObj('Store<UsersState>', [
+      'select',
+      'dispatch',
+    ]);
+    courseStoreSpy = jasmine.createSpyObj('Store<CoursesState>', [
+      'select',
+      'dispatch',
+    ]);
+    storeSpy.select.and.returnValue(of(mockDataUsers[0]));
+    storeSpy.dispatch.and.callThrough();
+    userStoreSpy.select.and.returnValue(of(mockDataUsers));
+    userStoreSpy.dispatch.and.callThrough();
+    courseStoreSpy.select.and.returnValue(of(mockDataCourses));
+    courseStoreSpy.dispatch.and.callThrough();
 
     fixture = TestBed.createComponent(UserComponent);
     component = fixture.componentInstance;
@@ -254,6 +321,23 @@ describe('UserComponent', () => {
     roleForm = form.controls['role'];
 
     store = TestBed.inject(MockStore);
+    userStore = TestBed.inject(MockStore<UsersState>);
+    courseStore = TestBed.inject(MockStore<CoursesState>);
+    store.setState({
+      ...initialState,
+      sesion: { active: true, identity: mockDataUsers[0] },
+    });
+    userStore.setState({
+      ...initialState,
+      loading: false,
+      users: mockDataUsers,
+    });
+    courseStore.setState({
+      ...initialState,
+      loading: false,
+      courses: mockDataCourses,
+    });
+
     fixture.detectChanges();
   });
 
@@ -275,21 +359,27 @@ describe('UserComponent', () => {
     expect(roleForm.getRawValue()).toEqual('');
   });
 
-  it('should update user', () => {
+  it('should update user', async () => {
     idForm.setValue(0);
     nameForm.setValue('AAA');
     surnameForm.setValue('AAA');
     emailForm.setValue('AAA@aaa.aaa');
     passwordForm.setValue('AAA');
     roleForm.setValue('AAA');
-    spyOn(userService, 'updateUser').and.returnValue(of(mockDataUsers[0]));
-    component.submit();
-    expect(idForm.getRawValue()).toEqual(mockDataUsers[0].id);
-    expect(nameForm.getRawValue()).toEqual(mockDataUsers[0].name);
-    expect(surnameForm.getRawValue()).toEqual(mockDataUsers[0].surname);
-    expect(emailForm.getRawValue()).toEqual(mockDataUsers[0].email);
-    expect(passwordForm.getRawValue()).toEqual(mockDataUsers[0].password);
-    expect(roleForm.getRawValue()).toEqual(mockDataUsers[0].role);
+    spyOn(userService, 'updateUser').and.returnValue(
+      new Promise((resolve) => {
+        resolve(mockDataUsers[1]);
+      })
+    );
+    await component.submit();
+    expect(component.isEdit).toEqual(false);
+    expect(component.user).toEqual(mockDataUsers[1]);
+    expect(idForm.getRawValue()).toEqual(mockDataUsers[1].id);
+    expect(nameForm.getRawValue()).toEqual(mockDataUsers[1].name);
+    expect(surnameForm.getRawValue()).toEqual(mockDataUsers[1].surname);
+    expect(emailForm.getRawValue()).toEqual(mockDataUsers[1].email);
+    expect(passwordForm.getRawValue()).toEqual(mockDataUsers[1].password);
+    expect(roleForm.getRawValue()).toEqual(mockDataUsers[1].role);
   });
 
   it('should add student role', () => {
@@ -297,6 +387,7 @@ describe('UserComponent', () => {
       of(mockDataCourses[0])
     );
     component.addStudent(mockDataCourses[0]);
+    mockDataCourses[0].students.push(mockDataUsers[0]);
     expect(mockDataCourses[0].students.includes(mockDataUsers[0])).toBeTrue();
   });
 
@@ -304,6 +395,15 @@ describe('UserComponent', () => {
     spyOn(courseService, 'updateCourse').and.returnValue(
       of(mockDataCourses[0])
     );
+    let i: number = -1;
+    for (let student2check of mockDataCourses[0].students) {
+      if (student2check.id === mockDataUsers[0].id) {
+        i = mockDataCourses[0].students.indexOf(student2check);
+      }
+    }
+    if (i !== -1) {
+      mockDataCourses[0].students.splice(i, 1);
+    }
     component.removeStudent(mockDataCourses[0]);
     expect(mockDataCourses[0].students.includes(mockDataUsers[0])).toBeFalse();
   });

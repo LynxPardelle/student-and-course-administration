@@ -27,7 +27,7 @@
           formControlName="profesor"
           aria-label="Profesor select"
         >
-          <ng-container *ngFor="let user of users">
+          <ng-container *ngFor="let user of users$ | async">
             <option
               *ngIf="user.role === 'profesor'"
               [ngValue]="user"
@@ -125,7 +125,7 @@
           aria-label="Student to add select"
         >
           <option [ngValue]="null" value="null">Selecciona el usuario</option>
-          <ng-container *ngFor="let user of users">
+          <ng-container *ngFor="let user of users$ | async">
             <option
               *ngIf="!hasItStudent(user)"
               [ngValue]="user"
@@ -212,7 +212,7 @@
         formControlName="user2Add"
         aria-label="Student to add select"
       >
-        <ng-container *ngFor="let user of users">
+        <ng-container *ngFor="let user of users$ | async">
           <option
             *ngIf="!hasItStudent(user)"
             [ngValue]="user"
@@ -272,7 +272,7 @@
         formControlName="profesor"
         aria-label="Profesor select"
       >
-        <ng-container *ngFor="let user of users">
+        <ng-container *ngFor="let user of users$ | async">
           <option
             *ngIf="user.role === 'profesor'"
             [ngValue]="user"

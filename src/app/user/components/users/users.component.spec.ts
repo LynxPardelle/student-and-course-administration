@@ -1,3 +1,4 @@
+import { Component } from '@angular/core';
 import {
   ComponentFixture,
   fakeAsync,
@@ -5,31 +6,53 @@ import {
   tick,
 } from '@angular/core/testing';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-
-import { UsersComponent } from './users.component';
 import { RouterTestingModule } from '@angular/router/testing';
-import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { By } from '@angular/platform-browser';
+import { UsersComponent } from './users.component';
+
+/* RxJs */
+import { of } from 'rxjs';
+
+/* Modesl */
+import { User } from '../../models/user';
+
+/* Services */
+import { UserService } from 'src/app/user/services/user.service';
+
+/* Store */
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import {
   LoadedUsersSelector,
   LoadingUsersSelector,
-} from 'src/app/state/selectors/user.selector';
-import { UserService } from 'src/app/user/services/user.service';
-import { User } from '../../models/user';
-import { of } from 'rxjs';
-import { LoginComponent } from 'src/app/auth/components/login/login.component';
-import { By } from '@angular/platform-browser';
+} from '../../state/user.selectors';
 import {
-  ActiveSesionSelector,
+  SesionLoadedSelector,
   IdentitySesionSelector,
 } from 'src/app/state/selectors/sesion.selector';
+
+/* NGX-Boostrap */
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { UsersState } from '../../interfaces/users.state';
+import { AppState } from 'src/app/state/app.state';
+import { Params } from '@angular/router';
+
+@Component({ template: `<h1>Some Title</h1>` })
+class TestLoginComponent {}
 
 describe('UsersComponent', () => {
   let component: UsersComponent;
   let service: UserService;
   let fixture: ComponentFixture<UsersComponent>;
-  const mockData: any[] = [
+  let storeSpy: {
+    select: jasmine.Spy;
+    dispatch: jasmine.Spy;
+  };
+  let userStoreSpy: {
+    select: jasmine.Spy;
+    dispatch: jasmine.Spy;
+  };
+  const mockData: User[] = [
     {
       id: 0,
       name: 'admin',
@@ -39,7 +62,7 @@ describe('UsersComponent', () => {
       role: 'admin',
     },
     {
-      id: '1',
+      id: 1,
       name: 'Alec',
       surname: 'Montaño',
       email: 'alec@example.com',
@@ -47,7 +70,7 @@ describe('UsersComponent', () => {
       role: 'profesor',
     },
     {
-      id: '2',
+      id: 2,
       name: 'Lucy',
       surname: 'Morning Star',
       email: 'lucy@morning-star.com',
@@ -55,7 +78,7 @@ describe('UsersComponent', () => {
       role: 'user',
     },
     {
-      id: '4',
+      id: 4,
       name: 'Pancho',
       surname: 'Lopez',
       email: 'pancho@gmail.com',
@@ -63,7 +86,7 @@ describe('UsersComponent', () => {
       role: 'user',
     },
     {
-      id: '5',
+      id: 5,
       name: 'Ang',
       surname: 'Perez',
       email: 'ang@gmail.com',
@@ -80,16 +103,17 @@ describe('UsersComponent', () => {
   let passwordForm: any;
   let roleForm: any;
 
-  let store: MockStore;
+  let store: MockStore<AppState>;
+  let userStore: MockStore<UsersState>;
   const initialState = {
     users: { loading: false, users: [] },
-    sesion: { active: false },
+    sesion: { active: true, identity: mockData[0] },
   };
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
         RouterTestingModule.withRoutes([
-          { path: 'auth/login', component: LoginComponent },
+          { path: 'auth/login', component: TestLoginComponent },
         ]),
         HttpClientTestingModule,
         ReactiveFormsModule,
@@ -110,7 +134,7 @@ describe('UsersComponent', () => {
               value: mockData,
             },
             {
-              selector: ActiveSesionSelector,
+              selector: SesionLoadedSelector,
               value: false,
             },
             {
@@ -122,6 +146,15 @@ describe('UsersComponent', () => {
         UserService,
       ],
     }).compileComponents();
+    storeSpy = jasmine.createSpyObj('Store<AppState>', ['select', 'dispatch']);
+    userStoreSpy = jasmine.createSpyObj('Store<UsersState>', [
+      'select',
+      'dispatch',
+    ]);
+    storeSpy.select.and.returnValue(of(mockData[0]));
+    userStoreSpy.select.and.returnValue(of(mockData));
+    storeSpy.dispatch.and.callThrough();
+    userStoreSpy.dispatch.and.callThrough();
 
     fixture = TestBed.createComponent(UsersComponent);
     component = fixture.componentInstance;
@@ -135,7 +168,18 @@ describe('UsersComponent', () => {
     passwordForm = form.controls['password'];
     roleForm = form.controls['role'];
 
-    store = TestBed.inject(MockStore);
+    store = TestBed.inject(MockStore<AppState>);
+    userStore = TestBed.inject(MockStore<UsersState>);
+    store.setState({
+      ...initialState,
+      sesion: { active: true, identity: mockData[0] },
+    });
+    userStore.setState({
+      ...initialState,
+      loading: false,
+      users: mockData,
+    });
+
     fixture.detectChanges();
   });
 
@@ -147,23 +191,25 @@ describe('UsersComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  xit('should get identity and set access token', fakeAsync(() => {
-    store.setState({
-      sesion: { active: true, identity: mockData[0] },
-    });
-    store.refreshState();
+  xit('should get identity and set access token', () => {
+    storeSpy.select.and.returnValue(of(mockData[0]));
+    spyOn(service, 'checkIfUserInterface').and.returnValue(true);
+    component.getAccessToken();
     fixture.detectChanges();
-    component.ngOnInit();
-    tick(1000);
     expect(component.access).toEqual(mockData[0].role);
-  }));
+  });
 
   it('should get Users', () => {
     const table = fixture.debugElement.query(By.css('[mat-table]'));
     expect(table).toBeTruthy();
-    service.updateUsersList();
     expect(component.ELEMENT_DATA).toEqual(mockData);
     expect(table).toBeTruthy();
+  });
+
+  it('should set search', () => {
+    component.search = 'a';
+    component.getUSers();
+    expect(component.ELEMENT_DATA).toEqual(mockData);
   });
 
   it('form should be invalid until all the controls have a value', () => {
@@ -199,9 +245,13 @@ describe('UsersComponent', () => {
     surnameForm.setValue('AAA');
     emailForm.setValue('AAA@aaa.aaa');
     passwordForm.setValue('AAAA');
-    spyOn(service, 'updateUser').and.returnValue(of(mockData[0]));
+    spyOn(service, 'updateUser').and.returnValue(
+      new Promise((resolve) => {
+        resolve(mockData[0]);
+      })
+    );
     await component.edit();
-    expect(idForm.getRawValue()).toEqual('');
+    expect(idForm.getRawValue()).toEqual(0);
     expect(nameForm.getRawValue()).toEqual('');
     expect(surnameForm.getRawValue()).toEqual('');
     expect(emailForm.getRawValue()).toEqual('');
@@ -287,7 +337,7 @@ describe('UsersComponent', () => {
     passwordForm.setValue('AAA');
     roleForm.setValue('AAA');
     component.clearForm();
-    expect(idForm.getRawValue()).toEqual('');
+    expect(idForm.getRawValue()).toEqual(0);
     expect(nameForm.getRawValue()).toEqual('');
     expect(surnameForm.getRawValue()).toEqual('');
     expect(emailForm.getRawValue()).toEqual('');

@@ -1,10 +1,12 @@
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
-import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { AppComponent } from './app.component';
+
+/* Store */
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import {
-  ActiveSesionSelector,
+  SesionLoadedSelector,
   IdentitySesionSelector,
 } from './state/selectors/sesion.selector';
 
@@ -23,7 +25,7 @@ describe('AppComponent', () => {
           initialState,
           selectors: [
             {
-              selector: ActiveSesionSelector,
+              selector: SesionLoadedSelector,
               value: false,
             },
             {

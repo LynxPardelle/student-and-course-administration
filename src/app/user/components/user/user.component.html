@@ -7,10 +7,14 @@
   <h3 class="text-center h6">{{ user.email }}</h3>
 
   <ng-container *ngIf="access === 'admin' || access === 'profesor'">
-    <h4>{{ "Role: " + user.role }}</h4>
+    <h4 class="text-center h6">{{ "Role: " + user.role }}</h4>
   </ng-container>
 
-  <ng-container *ngIf="ELEMENT_DATA && ELEMENT_DATA.length > 0">
+  <ng-container
+    *ngIf="ELEMENT_DATA && ELEMENT_DATA.length > 0"
+    [exist]="ELEMENT_DATA && ELEMENT_DATA.length > 0"
+    (ngInit)="cssCreate()"
+  >
     <div
       class="bef bef-bg-mystic bef-p-1rem w-100 d-flex justify-content-between"
     >
@@ -105,37 +109,43 @@
     ></div>
   </ng-container>
 
-  <ng-container *ngIf="!allCoursesHasIt()">
-    <h4 class="text-center my-3">Inscribirse a un curso nuevo</h4>
-    <div class="btn-group d-block mx-auto bef-w-250px" dropdown>
-      <button
-        id="button-basic"
-        dropdownToggle
-        type="button"
-        class="btn bef bef-btn-mystic text-light dropdown-toggle d-block mx-auto bef-w-250px"
-        aria-controls="dropdown-basic"
-      >
-        Selecciona el curso <span class="caret"></span>
-      </button>
-      <ul
-        id="dropdown-basic"
-        *dropdownMenu
-        class="dropdown-menu w-100 p-0"
-        role="menu"
-        aria-labelledby="button-basic"
-      >
-        <ng-container *ngFor="let course of courses">
-          <li *ngIf="!hasItStudent(user, course)" role="menuitem">
-            <button
-              class="btn btn-light w-100 text-dark"
-              (click)="addStudent(course)"
-            >
-              {{ course.title }}
-            </button>
-          </li>
-        </ng-container>
-      </ul>
-    </div>
+  <ng-container *ngIf="courses$ | async as courses">
+    <ng-container
+      *ngIf="!allCoursesHasIt(courses)"
+      [exist]="courses && !!courses[0]"
+      (ngInit)="cssCreate()"
+    >
+      <h4 class="text-center my-3">Inscribirse a un curso nuevo</h4>
+      <div class="btn-group d-block mx-auto bef-w-250px" dropdown>
+        <button
+          id="button-basic"
+          dropdownToggle
+          type="button"
+          class="btn bef bef-btn-mystic text-light dropdown-toggle d-block mx-auto bef-w-250px"
+          aria-controls="dropdown-basic"
+        >
+          Selecciona el curso <span class="caret"></span>
+        </button>
+        <div id="dropdown-basic" class="dropdown-menu w-100 p-0" *dropdownMenu>
+          <ul
+            class="bef bef-w-250px p-0 mx-auto d-block mb-0"
+            role="menu"
+            aria-labelledby="button-basic"
+          >
+            <ng-container *ngFor="let course of courses">
+              <li *ngIf="!hasItStudent(user, course)" role="menuitem">
+                <button
+                  class="btn btn-light w-100 text-dark"
+                  (click)="addStudent(course)"
+                >
+                  {{ course.title }}
+                </button>
+              </li>
+            </ng-container>
+          </ul>
+        </div>
+      </div>
+    </ng-container>
   </ng-container>
   <button
     class="btn bef bef-btn-mystic bef-text-lavender mx-auto d-block my-3"

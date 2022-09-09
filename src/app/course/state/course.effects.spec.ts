@@ -1,11 +1,16 @@
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { provideMockActions } from '@ngrx/effects/testing';
+import { CourseEffects } from './course.effects';
 
 /* RxJs */
-import { of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 
 /* Models */
 import { Course } from '../models/course';
+
+/* Services */
+import { CourseService } from '../services/course.service';
 
 /* Store */
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
@@ -13,10 +18,9 @@ import { CoursesState } from '../interfaces/courses.state';
 import {
   LoadedCoursesSelector,
   LoadingCoursesSelector,
-} from '../state/course.selectors';
-import { CourseService } from './course.service';
+} from './course.selectors';
 
-describe('CourseService', () => {
+describe('CourseEffects', () => {
   let httpClientSpy: {
     get: jasmine.Spy;
     post: jasmine.Spy;
@@ -27,7 +31,8 @@ describe('CourseService', () => {
     select: jasmine.Spy;
     dispatch: jasmine.Spy;
   };
-  let service: CourseService;
+  let actions$: Observable<any>;
+  let effects: CourseEffects;
   const mockDataCourses: Course[] = [
     {
       title: 'Angular',
@@ -146,10 +151,14 @@ describe('CourseService', () => {
   const initialState = {
     courses: { loading: false, courses: [] },
   };
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
+        CourseEffects,
+        provideMockActions(() => actions$),
+        CourseService,
         provideMockStore({
           initialState,
           selectors: [
@@ -172,7 +181,7 @@ describe('CourseService', () => {
     courseStoreSpy.select.and.returnValue(of(mockDataCourses));
     courseStoreSpy.dispatch.and.callThrough();
 
-    service = new CourseService(httpClientSpy as any, courseStoreSpy as any);
+    effects = TestBed.inject(CourseEffects);
 
     courseStore = TestBed.inject(MockStore<CoursesState>);
     courseStore.setState({
@@ -183,6 +192,6 @@ describe('CourseService', () => {
   });
 
   it('should be created', () => {
-    expect(service).toBeTruthy();
+    expect(effects).toBeTruthy();
   });
 });

@@ -1,9 +1,12 @@
 import { NgModule } from '@angular/core';
 import { AppRoutingModule } from 'src/app/app-routing.module';
-import { StoreModule } from '@ngrx/store';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
+
+/* RxJs */
+import { StoreModule } from '@ngrx/store';
+import { EffectsModule } from '@ngrx/effects';
 
 /* Shared Module */
 import { SharedModule } from './shared/shared.module';
@@ -18,15 +21,16 @@ import { AppComponent } from './app.component';
 import { HomeComponent } from 'src/app/core/components/home/home.component';
 
 /* Services */
-import { AuthService } from 'src/app/auth/services/auth.service';
 import { UserService } from 'src/app/user/services/user.service';
 import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 import { environment } from '../environments/environment';
 
-/* State */
+/* Store */
 import { ROOT_REDUCERS } from 'src/app/state/app.state';
+import { SesionEffects } from './state/effects/sesion.effects';
+import { ErrorComponent } from './core/components/error/error.component';
 @NgModule({
-  declarations: [AppComponent, HomeComponent],
+  declarations: [AppComponent, HomeComponent, ErrorComponent],
   imports: [
     AppRoutingModule,
     BrowserModule,
@@ -44,8 +48,9 @@ import { ROOT_REDUCERS } from 'src/app/state/app.state';
       logOnly: environment.production,
       name: 'CourseStudents',
     }),
+    EffectsModule.forRoot([SesionEffects]),
   ],
-  providers: [AuthService, UserService],
+  providers: [UserService],
   bootstrap: [AppComponent],
 })
 export class AppModule {}

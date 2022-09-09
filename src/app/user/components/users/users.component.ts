@@ -8,19 +8,40 @@ import {
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatTable, MatTableDataSource } from '@angular/material/table';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subscription, lastValueFrom, Observable } from 'rxjs';
 
-import { UserService } from 'src/app/user/services/user.service';
+/* RxJs */
+import {
+  Subscription,
+  lastValueFrom,
+  Observable,
+  map,
+  filter,
+  firstValueFrom,
+} from 'rxjs';
+
+/* Models */
 import { User } from 'src/app/user/models/user';
 
+/* Services */
+import { UserService } from 'src/app/user/services/user.service';
+
+/* Store */
+import { Store } from '@ngrx/store';
+import { AppState } from 'src/app/state/app.state';
+import { UsersState } from '../../interfaces/users.state';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
+import {
+  LoadedUsersSelector,
+  LoadingUsersSelector,
+} from '../../state/user.selectors';
+import { LoadUsers, UsersLoaded } from '../../state/user.actions';
+
+/* NGX-Bootstrap */
 import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 
 /* Bef */
 import { NgxBootstrapExpandedFeaturesService as BefService } from 'ngx-bootstrap-expanded-features';
-import { AuthService } from 'src/app/auth/services/auth.service';
-import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
-import { AppState } from 'src/app/state/app.state';
-import { Store } from '@ngrx/store';
+import { LoadSesion } from 'src/app/state/actions/sesion.actions';
 @Component({
   selector: 'app-users',
   templateUrl: './users.component.html',
@@ -29,7 +50,8 @@ import { Store } from '@ngrx/store';
 })
 export class UsersComponent implements OnInit, OnDestroy {
   modalRef?: BsModalRef;
-  public identity$!: Observable<User | undefined>;
+  public users$!: Observable<User[]>;
+  public identity$: Observable<User | undefined>;
   public access: string = 'public';
   public columns: string[] = ['name', 'role', 'actions'];
   public ELEMENT_DATA: User[] = [];
@@ -39,13 +61,14 @@ export class UsersComponent implements OnInit, OnDestroy {
   public editUserForm: FormGroup;
   public roleOptions: string[] = ['user', 'profesor', 'admin'];
   public usersSubscription!: Subscription;
+  public search: string | null = null;
   @ViewChild(MatTable) tabla!: MatTable<User>;
   constructor(
     private store: Store<AppState>,
+    private usersStore: Store<UsersState>,
     private fb: FormBuilder,
-    private _route: ActivatedRoute,
     private _router: Router,
-    private _authService: AuthService,
+    private _route: ActivatedRoute,
     private _userService: UserService,
     private _befService: BefService,
     private modalService: BsModalService
@@ -68,16 +91,49 @@ export class UsersComponent implements OnInit, OnDestroy {
       ],
       role: [this.roleOptions[0]],
     });
+    this.identity$ = this.store.select(IdentitySesionSelector);
+    this.users$ = this.usersStore.select(LoadedUsersSelector);
   }
 
   ngOnInit(): void {
-    this.identity$ = this.store.select(IdentitySesionSelector);
+    this._route.params.subscribe({
+      next: (p) => {
+        this.search = p['search'] ? p['search'] : null;
+      },
+      error: (e) => console.error(e),
+    });
+    this.getAccessToken();
+    this.getUSers();
+    this.usersStore.dispatch(LoadUsers());
+    this.cssCreate();
+  }
+
+  getUSers() {
+    this.users$.subscribe({
+      next: (users) => {
+        if (this.search !== null) {
+          let search = new RegExp(`${this.search}`, 'i');
+          users = users.filter(
+            (u: User) =>
+              search.test(u.name) ||
+              search.test(u.surname) ||
+              search.test(u.email)
+          );
+        }
+        this.ELEMENT_DATA = users;
+        this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
+      },
+      error: (e) => console.error(e),
+    });
+  }
+
+  getAccessToken() {
     this.identity$.subscribe({
       next: (i) => {
-        if (!this._userService.checkIfUserInterface(i)) {
-          this._router.navigate(['/auth/login']);
-        } else {
+        if (this._userService.checkIfUserInterface(i)) {
           this.access = i.role;
+        } else {
+          this._router.navigate(['/auth/login']);
         }
       },
       error: (e) => {
@@ -85,35 +141,20 @@ export class UsersComponent implements OnInit, OnDestroy {
         this.access = 'public';
       },
     });
-    this.usersSubscription = this._userService.getUsers().subscribe({
-      next: (users) => {
-        this.ELEMENT_DATA = users;
-        this.dataSource = new MatTableDataSource(this.ELEMENT_DATA);
-      },
-      error: (err) => console.error(err),
-    });
-    this.cssCreate();
   }
 
-  ngOnDestroy(): void {
-    this.usersSubscription.unsubscribe();
-  }
+  ngOnDestroy(): void {}
 
   async edit() {
     try {
-      let userUpdated = await lastValueFrom(
-        this._userService.updateUser(
-          {
-            id: this.editUserForm.get('id')?.getRawValue(),
-            name: this.editUserForm.get('name')?.getRawValue(),
-            surname: this.editUserForm.get('surname')?.getRawValue(),
-            email: this.editUserForm.get('email')?.getRawValue(),
-            password: this.editUserForm.get('password')?.getRawValue(),
-            role: this.editUserForm.get('role')?.getRawValue(),
-          },
-          true
-        )
-      );
+      let userUpdated = await this._userService.updateUser({
+        id: this.editUserForm.get('id')?.getRawValue(),
+        name: this.editUserForm.get('name')?.getRawValue(),
+        surname: this.editUserForm.get('surname')?.getRawValue(),
+        email: this.editUserForm.get('email')?.getRawValue(),
+        password: this.editUserForm.get('password')?.getRawValue(),
+        role: this.editUserForm.get('role')?.getRawValue(),
+      });
       if (
         !userUpdated ||
         !this._userService.checkIfUserInterface(userUpdated)
@@ -122,14 +163,13 @@ export class UsersComponent implements OnInit, OnDestroy {
       }
       this.modalRef?.hide();
       this.clearForm();
-      this._userService.updateUsersList();
     } catch (error) {
       console.error(error);
     }
   }
 
-  async delete(user: User) {
-    this._userService.deleteUser(user.id, true).subscribe({
+  delete(user: User) {
+    this._userService.deleteUser(user.id).subscribe({
       next: (deletedMessage) => {
         console.log(deletedMessage);
       },
@@ -177,7 +217,7 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   clearForm() {
-    this.editUserForm.get('id')?.setValue('');
+    this.editUserForm.get('id')?.setValue(0);
     this.editUserForm.get('name')?.setValue('');
     this.editUserForm.get('surname')?.setValue('');
     this.editUserForm.get('email')?.setValue('');

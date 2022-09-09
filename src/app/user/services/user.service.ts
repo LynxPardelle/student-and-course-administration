@@ -1,193 +1,153 @@
 import { Injectable } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { User } from 'src/app/user/models/user';
+
+/* RxJs */
+import { firstValueFrom, lastValueFrom, map, Observable, Subject } from 'rxjs';
+
+/* Environments */
+import { environment } from 'src/environments/environment';
+
+/* Interfaces */
 import UserInterface from 'src/app/user/interfaces/user';
-import Enviroment from 'src/app/environments/enviroment';
+
+/* Models */
+import { User } from 'src/app/user/models/user';
+import { UsersState } from '../interfaces/users.state';
+
+/* Store */
+import { Store } from '@ngrx/store';
+import { LoadUsers } from '../state/user.actions';
+import { LoadedUsersSelector } from '../state/user.selectors';
+import { AppState } from 'src/app/state/app.state';
+import { IdentitySesionSelector } from 'src/app/state/selectors/sesion.selector';
+import { LoadSesion } from 'src/app/state/actions/sesion.actions';
 
 @Injectable({
   providedIn: 'root',
 })
 export class UserService {
-  public users: User[] = [];
-  public usersSubject: Subject<any> = new Subject();
-  public identity: any;
-  private api = Enviroment.api;
+  public users$: Observable<User[]>;
+  public sesion$: Observable<User | undefined>;
+  public access: string = 'public';
+  private readonly api = environment.api;
 
-  constructor(private _http: HttpClient) {}
+  constructor(
+    private _http: HttpClient,
+    private store: Store<AppState>,
+    private usersStore: Store<UsersState>
+  ) {
+    this.users$ = this.usersStore.select(LoadedUsersSelector);
+
+    this.sesion$ = this.store.select(IdentitySesionSelector);
+    this.sesion$.subscribe({
+      next: (i) => {
+        this.access = i?.role ? i.role : 'public';
+      },
+      error: (err) => {
+        console.error(err);
+        this.access = 'public';
+      },
+    });
+  }
 
   // Create
-  register(user: User): Observable<any> {
-    while (this.users.find((u) => u.id == user.id)) {
+  async register(user: User): Promise<User> {
+    while (
+      await firstValueFrom(
+        this.users$.pipe(
+          map((users: User[]) => {
+            return users.find((u) => u.id == user.id);
+          })
+        )
+      )
+    ) {
       user.id++;
     }
-    setTimeout(() => {
-      this.updateUsersList();
-    }, 1);
-    return this._http.post<User>(`${this.api}/User/`, user);
+    return lastValueFrom(this._http.post<User>(`${this.api}/User/`, user));
   }
 
   // Read
   getUsers(): Observable<User[]> {
-    setTimeout(() => {
-      this.updateUsersList();
-    }, 1);
-    return this.usersSubject.asObservable();
+    return this._http.get<User[]>(`${this.api}/User`, {
+      headers: new HttpHeaders({
+        'content-type': 'application/json',
+        encoding: 'UTF-8',
+      }),
+    });
   }
 
-  updateUsersList(): void {
-    this._http
+  getUser(id: number, reset: boolean = false): Observable<User> {
+    return this._http
+      .get<User>(`${this.api}/User/${id}`, {
+        headers: new HttpHeaders({
+          'content-type': 'application/json',
+          encoding: 'UTF-8',
+        }),
+      })
+      .pipe(
+        map((u: User) => {
+          if (typeof u.id === 'string') {
+            u.id = parseInt(u.id);
+          }
+          if (this.access !== 'admin') {
+            u.password = '';
+          }
+          return u;
+        })
+      );
+  }
+
+  login(email: string, password: string): Observable<User> {
+    return this._http
       .get<User[]>(`${this.api}/User`, {
         headers: new HttpHeaders({
           'content-type': 'application/json',
           encoding: 'UTF-8',
         }),
       })
-      .subscribe({
-        next: (users) => {
-          this.users = users.map((user) => {
-            if (typeof user.id === 'string') {
-              user.id = parseInt(user.id);
-            }
-            if (!this.identity || this.identity.role !== 'admin') {
-              user.password = '';
-            }
-            return user;
-          });
-          this.usersSubject.next(this.users);
-        },
-        error: (err) => {
-          this.users = [];
-          console.error(err);
-          this.usersSubject.next(this.users);
-          this.usersSubject.error('Error.');
-        },
-        complete: () => {
-          this.usersSubject.complete();
-        },
-      });
-  }
-
-  getUser(id: number, reset: boolean = false): Observable<User> {
-    let userSubject: Subject<any> = new Subject();
-    setTimeout(() => {
-      this._http
-        .get<User>(`${this.api}/User/${id}`, {
-          headers: new HttpHeaders({
-            'content-type': 'application/json',
-            encoding: 'UTF-8',
-          }),
+      .pipe(
+        map((users: User[]) => {
+          let user2Log = users.find(
+            (u) => u.email === email && u.password === password
+          );
+          if (user2Log) {
+            return user2Log;
+          } else {
+            throw new Error('Usuario o contraseña incorrectos.');
+          }
         })
-        .subscribe({
-          next: (user) => {
-            if (!this.identity || this.identity.role !== 'admin') {
-              user.password = '';
-            }
-            userSubject.next(user);
-          },
-          error: (error) => {
-            console.error(error);
-            userSubject.error(error);
-          },
-          complete: () => {
-            userSubject.complete();
-          },
-        });
-    }, 1);
-    return userSubject.asObservable();
-  }
-
-  login(email: string, password: string): Observable<User> {
-    let userSubject: Subject<User> = new Subject();
-    setTimeout(() => {
-      this._http
-        .get<User[]>(`${this.api}/User`, {
-          headers: new HttpHeaders({
-            'content-type': 'application/json',
-            encoding: 'UTF-8',
-          }),
-        })
-        .subscribe({
-          next: (users) => {
-            let user2Log = users.find(
-              (u) => u.email === email && u.password === password
-            );
-            if (user2Log) {
-              userSubject.next(user2Log);
-            } else {
-              userSubject.error('Email o contraseña incorrecta.');
-            }
-          },
-          error: (error) => {
-            console.error(error);
-            userSubject.error(error);
-          },
-          complete: () => userSubject.complete(),
-        });
-    }, 100);
-    return userSubject.asObservable();
+      );
   }
 
   // Update
-  updateUser(user: User, reset: boolean = false): Observable<User> {
-    let userSubject: Subject<any> = new Subject();
-    setTimeout(() => {
-      let userO = this.users.find((u) => u.id == user.id);
-      if (user.password === '' && userO) {
-        user.password = userO.password;
-      }
-      if (user.password !== '') {
-        this._http
-          .put<User>(`${this.api}/User/${user.id.toString()}`, user)
-          .subscribe({
-            next: (user) => {
-              userSubject.next(user);
-              if (reset) {
-                this.updateUsersList();
-              }
-            },
-            error: (err) => {
-              console.error(err);
-              userSubject.error(err);
-            },
-            complete: () => {
-              userSubject.complete();
-            },
-          });
-      } else {
-        userSubject.error('La contraseña está vacía.');
-      }
-    }, 1);
-    return userSubject.asObservable();
+  async updateUser(user: User): Promise<User> {
+    let u = await firstValueFrom(
+      this.users$.pipe(
+        map((users: User[]) => {
+          return users.find((u) => u.id == user.id);
+        })
+      )
+    );
+    if (user.password === '' && u) {
+      user.password = u.password;
+    }
+    if (user.password !== '') {
+      return lastValueFrom(
+        this._http.put<User>(`${this.api}/User/${user.id.toString()}`, user)
+      );
+    } else {
+      throw new Error('La contraseña está vacía.');
+    }
   }
 
   // Delete
-  deleteUser(id: number, reset: boolean = false): Observable<any> {
-    let userSubject: Subject<any> = new Subject();
-    setTimeout(() => {
-      this._http.delete<User>(`${this.api}/User/${id.toString()}`).subscribe({
-        next: () => {
-          userSubject.next('User deleted.');
-          if (reset) {
-            this.updateUsersList();
-          }
-        },
-        error: (err) => {
-          console.error(err);
-          userSubject.error(err);
-          if (reset) {
-            this.updateUsersList();
-          }
-        },
-        complete: () => {
-          userSubject.complete();
-          if (reset) {
-            this.updateUsersList();
-          }
-        },
-      });
-    }, 1);
-    return userSubject.asObservable();
+  deleteUser(id: number): Observable<any> {
+    return this._http.delete<User>(`${this.api}/User/${id.toString()}`).pipe(
+      map((u) => {
+        this.usersStore.dispatch(LoadUsers());
+        return u;
+      })
+    );
   }
 
   // Utility
