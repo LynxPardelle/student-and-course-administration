@@ -243,7 +243,6 @@ export class CoursesComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (c) => {
-          console.log(c);
           if (!this._courseService.checkIfCourseInterface(c)) {
             throw new Error('Curso no actualizado.');
           }

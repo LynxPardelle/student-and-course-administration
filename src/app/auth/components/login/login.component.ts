@@ -93,7 +93,7 @@ export class LoginComponent implements OnInit {
             error: (e) => {
               this.debugMessage =
                 'Error, no se encontró el usuario o la contraseña esta mal escrita.';
-              console.log(e);
+              console.error(e);
             },
           });
       } else {
@@ -108,14 +108,13 @@ export class LoginComponent implements OnInit {
               role: this.loginForm.get('role')?.getRawValue(),
             });
             this.usersStore.dispatch(LoadUsers());
-            console.log(newUser);
             if (!newUser || !this._userService.checkIfUserInterface(newUser)) {
               throw new Error('Usuario Registrado.');
             }
             this.debugMessage = 'Usuario Registrado.';
           } catch (error) {
             this.debugMessage = 'Hubo un error en la creación del usuario.';
-            console.log(error);
+            console.error(error);
           }
         }, 1000);
       }

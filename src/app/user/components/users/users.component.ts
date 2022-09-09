@@ -170,9 +170,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   delete(user: User) {
     this._userService.deleteUser(user.id).subscribe({
-      next: (deletedMessage) => {
-        console.log(deletedMessage);
-      },
+      next: (deletedMessage) => {},
       error: (error) => console.error(error),
     });
   }

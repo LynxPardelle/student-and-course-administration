@@ -309,7 +309,6 @@ describe('UsersComponent', () => {
   xit('should filter', () => {
     component.ngOnInit();
     const matInput = fixture.debugElement.query(By.css('[matInput]'));
-    console.log(matInput);
     expect(matInput).toBeTruthy();
     let handler: Function | undefined;
 
